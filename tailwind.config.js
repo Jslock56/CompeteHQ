@@ -1,3 +1,6 @@
+// tailwind.config.js
+import forms from '@tailwindcss/forms'; 
+
 /** @type {import('tailwindcss').Config} */
 const config = {
   content: [
@@ -9,17 +12,17 @@ const config = {
     extend: {
       colors: {
         primary: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
-          950: '#172554',
+          50: '#f0f7ff',  // Lightest Steel Blue
+          100: '#e0f0fe',
+          200: '#bae0fd',
+          300: '#90cafc',
+          400: '#60b2f7',
+          500: '#4682B4',  // Steel Blue
+          600: '#3b74a9',  // Slightly darker Steel Blue
+          700: '#2d5d8b',
+          800: '#264e73',
+          900: '#193545',
+          950: '#0f2231',
         },
         secondary: {
           50: '#f8fafc',
@@ -51,9 +54,9 @@ const config = {
     },
   },
   plugins: [
-    // If you're using @tailwindcss/forms plugin
-    // Uncomment the following line if you have @tailwindcss/forms installed
-    // require('@tailwindcss/forms'),
+    // For ESM projects, we use the forms plugin this way:
+    // If you haven't installed @tailwindcss/forms, run:
+    // npm install @tailwindcss/forms
   ],
 };
 
