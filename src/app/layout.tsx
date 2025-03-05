@@ -2,11 +2,12 @@
 "use client";
 
 import { ReactNode, useState } from "react";
+import { Providers } from "./providers";
+import { Box, Flex, Text } from "@chakra-ui/react";
 import Header from "../components/common/header";
 import Navigation from "../components/common/navigation";
 import WidgetsSidebar from "../components/common/widgets-sidebar";
 import { TeamProvider } from "../contexts/team-context";
-import "../styles/globals.css";
 
 export default function RootLayout({
   children,
@@ -25,64 +26,107 @@ export default function RootLayout({
 
   return (
     <html lang="en">
-      <body className="h-screen flex flex-col bg-gray-50">
-        <TeamProvider>
-          {/* Header - smaller height */}
-          <Header currentTeam={currentTeam} />
-          
-          <div className="flex flex-1 overflow-hidden">
-            {/* Left Sidebar - Navigation */}
-            <div className={`bg-white w-60 border-r border-gray-200 flex-shrink-0 transition-all duration-300 ease-in-out ${isSidebarOpen ? '' : '-ml-60'}`}>
-              <Navigation currentTeam={currentTeam} />
+      <body>
+        <Providers>
+          <TeamProvider>
+            {/* Layout structure using Chakra components */}
+            <Flex direction="column" h="100vh">
+              {/* Header */}
+              <Header currentTeam={currentTeam} />
               
-              {/* Toggle button at bottom of sidebar */}
-              <button 
-                onClick={() => setSidebarOpen(!isSidebarOpen)}
-                className="absolute bottom-4 left-4 p-1 rounded-full bg-gray-200 text-gray-600 hover:bg-gray-300"
-                title={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-              >
-                <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                  {isSidebarOpen ? (
-                    <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-                  ) : (
-                    <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                  )}
-                </svg>
-              </button>
-            </div>
-            
-            {/* Main Content */}
-            <div className="flex-1 overflow-auto">
-              <main className="p-6">{children}</main>
-            </div>
-            
-            {/* Right Sidebar - Widgets (Collapsible) */}
-            <div className={`bg-white w-72 border-l border-gray-200 flex-shrink-0 transition-all duration-300 ease-in-out ${isWidgetSidebarOpen ? '' : 'translate-x-full'}`}>
-              <WidgetsSidebar />
+              {/* Main area with sidebars */}
+              <Flex flex="1" overflow="hidden">
+                {/* Left Navigation Sidebar */}
+                <Box
+                  bg="white"
+                  w="60"
+                  borderRightWidth="1px"
+                  borderColor="gray.200"
+                  flexShrink={0}
+                  transition="all 0.3s ease-in-out"
+                  ml={isSidebarOpen ? 0 : "-60"}
+                  position="relative"
+                >
+                  <Navigation currentTeam={currentTeam} />
+                  
+                  {/* Sidebar toggle button */}
+                  <Box
+                    as="button"
+                    position="absolute"
+                    bottom="4"
+                    left="4"
+                    p="1"
+                    borderRadius="full"
+                    bg="gray.200"
+                    color="gray.600"
+                    _hover={{ bg: "gray.300" }}
+                    onClick={() => setSidebarOpen(!isSidebarOpen)}
+                    title={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+                  >
+                    {/* Icon could go here */}
+                  </Box>
+                </Box>
+                
+                {/* Main Content */}
+                <Box flex="1" overflow="auto">
+                  <Box as="main" p="6">
+                    {children}
+                  </Box>
+                </Box>
+                
+                {/* Right Widgets Sidebar */}
+                <Box
+                  bg="white"
+                  w="72"
+                  borderLeftWidth="1px"
+                  borderColor="gray.200"
+                  flexShrink={0}
+                  transition="all 0.3s ease-in-out"
+                  transform={isWidgetSidebarOpen ? "none" : "translateX(100%)"}
+                >
+                  <WidgetsSidebar />
+                  
+                  {/* Toggle button */}
+                  <Box
+                    as="button"
+                    position="absolute"
+                    top="20"
+                    right="0"
+                    p="1"
+                    borderRadius="md"
+                    borderRightRadius="0"
+                    bg="white"
+                    borderWidth="1px"
+                    borderColor="gray.200"
+                    borderRight="0"
+                    color="gray.600"
+                    _hover={{ bg: "gray.50" }}
+                    transform="translateX(-100%)"
+                    onClick={() => setWidgetSidebarOpen(!isWidgetSidebarOpen)}
+                    title={isWidgetSidebarOpen ? "Hide widgets" : "Show widgets"}
+                  >
+                    {/* Icon would go here */}
+                  </Box>
+                </Box>
+              </Flex>
               
-              {/* Toggle button */}
-              <button 
-                onClick={() => setWidgetSidebarOpen(!isWidgetSidebarOpen)}
-                className="absolute top-20 right-0 p-1 rounded-l-md bg-white border border-gray-200 border-r-0 text-gray-600 hover:bg-gray-50"
-                style={{ transform: isWidgetSidebarOpen ? 'translateX(-100%)' : 'translateX(-100%)' }}
-                title={isWidgetSidebarOpen ? "Hide widgets" : "Show widgets"}
+              {/* Footer */}
+              <Box
+                as="footer"
+                bg="white"
+                borderTopWidth="1px"
+                borderColor="gray.200"
+                py="2"
+                px="4"
+                fontSize="xs"
+                color="gray.500"
+                textAlign="center"
               >
-                <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                  {isWidgetSidebarOpen ? (
-                    <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                  ) : (
-                    <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-                  )}
-                </svg>
-              </button>
-            </div>
-          </div>
-          
-          {/* Footer - slim and simple */}
-          <footer className="bg-white border-t border-gray-200 py-2 px-4 text-xs text-gray-500 text-center">
-            © {new Date().getFullYear()} competeHQ
-          </footer>
-        </TeamProvider>
+                © {new Date().getFullYear()} competeHQ
+              </Box>
+            </Flex>
+          </TeamProvider>
+        </Providers>
       </body>
     </html>
   );
