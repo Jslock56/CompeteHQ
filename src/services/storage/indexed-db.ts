@@ -1,112 +1,185 @@
-// src/services/storage/indexed-db.ts
-import { openDB, DBSchema, IDBPDatabase } from 'idb';
+// Import the IndexedDB helper from the 'idb' library for easier, promise-based usage
+import { openDB, IDBPDatabase, DBSchema } from 'idb';
 
+// Define data models for clarity and strong typing
+interface Player {
+  id: string;
+  name: string;
+  email: string;
+  teamId: string;
+}
+
+interface Team {
+  id: string;
+  name: string;
+}
+
+interface Game {
+  id?: number;          // optional for input (will be auto-assigned if not provided)
+  date: string;
+  teamA: string;
+  teamB: string;
+  scoreA: number;
+  scoreB: number;
+}
+
+// Define the database schema, listing all object stores and their key/value types and indexes
 interface CompeteHQDB extends DBSchema {
-  teams: { key: string; value: Record<string, unknown>; indexes: { 'by-updated': number } };
-  players: { key: string; value: Record<string, unknown>; indexes: { 'by-team': string; 'by-updated': number } };
-  games: { key: string; value: Record<string, unknown>; indexes: { 'by-team': string; 'by-date': number; 'by-status': string } };
-  lineups: { key: string; value: Record<string, unknown>; indexes: { 'by-game': string; 'by-team': string } };
-  practices: { key: string; value: Record<string, unknown>; indexes: { 'by-team': string; 'by-date': number } };
-  positionHistory: { key: string; value: Record<string, unknown>; indexes: { 'by-player': string; 'by-game': string } };
-  settings: { key: string; value: Record<string, unknown> };
+  /** Store for player profiles */
+  players: {
+    key: string;                     // primary key type
+    value: Player;                   // stored object type
+    indexes: {
+      byEmail: string;               // index on Player.email (unique)
+      byTeamId: string;              // index on Player.teamId (non-unique, many players per team)
+    };
+  };
+  /** Store for team information */
+  teams: {
+    key: string;
+    value: Team;
+    indexes: {
+      byName: string;               // index on Team.name (unique)
+    };
+  };
+  /** Store for game/match records */
+  games: {
+    key: number;
+    value: Game;
+    indexes: {
+      byTeamA: string;              // index on Game.teamA
+      byTeamB: string;              // index on Game.teamB
+      byDate: string;               // index on Game.date
+    };
+  };
 }
 
 class IndexedDBService {
-  private dbPromise: Promise<IDBPDatabase<CompeteHQDB>>;
-  private readonly DB_NAME = 'competehq-db';
+  // Singleton instance to ensure only one connection throughout the app
+  private static instance: IndexedDBService;
+  // Name and version of the IndexedDB database
+  private readonly DB_NAME = 'CompeteHQDB';
   private readonly DB_VERSION = 1;
+  // Reference to the database (IDBPDatabase is a typed wrapper around IndexedDB database)
+  private dbPromise: Promise<IDBPDatabase<CompeteHQDB>>;
 
-  constructor() {
-    this.dbPromise = this.initDB();
-  }
-
-  private async initDB(): Promise<IDBPDatabase<CompeteHQDB>> {
-    return openDB<CompeteHQDB>(this.DB_NAME, this.DB_VERSION, {
-      upgrade(db) {
-        const stores = [
-          { name: 'teams', key: 'id', indexes: [{ name: 'by-updated', key: 'updatedAt' }] },
-          { name: 'players', key: 'id', indexes: [{ name: 'by-team', key: 'teamId' }, { name: 'by-updated', key: 'updatedAt' }] },
-          { name: 'games', key: 'id', indexes: [{ name: 'by-team', key: 'teamId' }, { name: 'by-date', key: 'date' }, { name: 'by-status', key: 'status' }] },
-          { name: 'lineups', key: 'id', indexes: [{ name: 'by-game', key: 'gameId' }, { name: 'by-team', key: 'teamId' }] },
-          { name: 'practices', key: 'id', indexes: [{ name: 'by-team', key: 'teamId' }, { name: 'by-date', key: 'date' }] },
-          { name: 'positionHistory', key: 'id', indexes: [{ name: 'by-player', key: 'playerId' }, { name: 'by-game', key: 'gameId' }] },
-          { name: 'settings', key: 'id', indexes: [] },
-        ];
-
-        for (const store of stores) {
-          if (!db.objectStoreNames.contains(store.name)) {
-            const objStore = db.createObjectStore(store.name, { keyPath: store.key });
-            store.indexes.forEach(idx => objStore.createIndex(idx.name, idx.key));
-          }
+  /** Private constructor to set up the database connection and object stores */
+  private constructor() {
+    this.dbPromise = openDB<CompeteHQDB>(this.DB_NAME, this.DB_VERSION, {
+      upgrade(database, oldVersion, newVersion, transaction) {
+        // Create object stores and indexes if they don't exist (initial setup or version upgrades)
+        if (!database.objectStoreNames.contains('players')) {
+          const playerStore = database.createObjectStore('players', { keyPath: 'id' });
+          playerStore.createIndex('byEmail', 'email', { unique: true });
+          playerStore.createIndex('byTeamId', 'teamId', { unique: false });
+        }
+        if (!database.objectStoreNames.contains('teams')) {
+          const teamStore = database.createObjectStore('teams', { keyPath: 'id' });
+          teamStore.createIndex('byName', 'name', { unique: true });
+        }
+        if (!database.objectStoreNames.contains('games')) {
+          // Using autoIncrement for game IDs; 'id' will be generated if not supplied
+          const gameStore = database.createObjectStore('games', { keyPath: 'id', autoIncrement: true });
+          gameStore.createIndex('byTeamA', 'teamA', { unique: false });
+          gameStore.createIndex('byTeamB', 'teamB', { unique: false });
+          gameStore.createIndex('byDate', 'date', { unique: false });
         }
       },
+      blocked() {
+        console.warn('IndexedDB upgrade blocked: close other connections or tabs using the database.');
+      },
+      blocking() {
+        console.warn('A new IndexedDB connection is blocking the current connection from closing.');
+      },
+      terminated() {
+        console.error('IndexedDB connection unexpectedly terminated.');
+      }
     });
   }
 
-  public async get<K extends keyof CompeteHQDB>(storeName: K, id: string): Promise<CompeteHQDB[K]['value'] | undefined> {
-    const db = await this.dbPromise;
-    return db.get(storeName, id);
+  /** Retrieve the singleton instance of the service (creates one if it doesn't exist) */
+  static getInstance(): IndexedDBService {
+    if (!IndexedDBService.instance) {
+      IndexedDBService.instance = new IndexedDBService();
+    }
+    return IndexedDBService.instance;
   }
 
-  public async getAll<K extends keyof CompeteHQDB>(storeName: K): Promise<CompeteHQDB[K]['value'][]> {
-    const db = await this.dbPromise;
-    return db.getAll(storeName);
-  }
-
-  public async add<K extends keyof CompeteHQDB>(storeName: K, item: CompeteHQDB[K]['value']): Promise<string> {
-    const db = await this.dbPromise;
-    return db.add(storeName, item);
-  }
-
-  public async put<K extends keyof CompeteHQDB>(storeName: K, item: CompeteHQDB[K]['value']): Promise<string> {
-    const db = await this.dbPromise;
-    return db.put(storeName, item);
-  }
-
-  public async delete<K extends keyof CompeteHQDB>(storeName: K, id: string): Promise<void> {
-    const db = await this.dbPromise;
-    return db.delete(storeName, id);
-  }
-
-  public async clear<K extends keyof CompeteHQDB>(storeName: K): Promise<void> {
-    const db = await this.dbPromise;
-    return db.clear(storeName);
-  }
-
-  public async getByIndex<K extends keyof CompeteHQDB, I extends keyof CompeteHQDB[K]['indexes']>(
+  /**
+   * Get an item from a specified object store by its key.
+   * @param storeName - The name of the object store (must be a key of CompeteHQDB).
+   * @param key - The primary key value of the item to retrieve (must match the store's key type).
+   * @returns The value from the store, or undefined if not found.
+   */
+  async get<K extends keyof CompeteHQDB>(
     storeName: K,
-    indexName: I,
-    key: IDBValidKey
-  ): Promise<CompeteHQDB[K]['value'][]> {
-    const db = await this.dbPromise;
-    return db.getAllFromIndex(storeName, indexName as string, key);
+    key: CompeteHQDB[K]['key']
+  ): Promise<CompeteHQDB[K]['value'] | undefined> {
+    try {
+      const db = await this.dbPromise;
+      const result = await db.get(storeName, key);
+      return result ?? undefined;
+    } catch (error) {
+      console.error(`Failed to get key "${String(key)}" from store "${String(storeName)}":`, error);
+      return undefined;
+    }
   }
 
-  // Specialized methods
-  public async getTeamPlayers(teamId: string) {
-    return this.getByIndex('players', 'by-team', teamId);
+  /**
+   * Add or update an item in the specified object store.
+   * @param storeName - The name of the object store (must be a key of CompeteHQDB).
+   * @param value - The value to put into the store (must match the store's value type).
+   * @param key - (Optional) The primary key to use, if not using the store's keyPath or if overwriting a specific key.
+   * @returns The key of the stored item, or undefined if the operation failed.
+   */
+  async put<K extends keyof CompeteHQDB>(
+    storeName: K,
+    value: CompeteHQDB[K]['value'],
+    key?: CompeteHQDB[K]['key']
+  ): Promise<CompeteHQDB[K]['key'] | undefined> {
+    try {
+      const db = await this.dbPromise;
+      // Use the database's put method (will add or update the record)
+      const resultKey = key !== undefined 
+        ? await db.put(storeName, value, key) 
+        : await db.put(storeName, value);
+      return resultKey;
+    } catch (error) {
+      console.error(`Failed to put value in store "${String(storeName)}":`, error);
+      return undefined;
+    }
   }
 
-  public async getTeamGames(teamId: string) {
-    return this.getByIndex('games', 'by-team', teamId);
-  }
-
-  public async getGameLineup(gameId: string) {
-    const lineups = await this.getByIndex('lineups', 'by-game', gameId);
-    return lineups.length > 0 ? lineups[0] : null;
-  }
-
-  public async getPlayerPositionHistory(playerId: string) {
-    return this.getByIndex('positionHistory', 'by-player', playerId);
-  }
-
-  public async getSetting(key: string): Promise<Record<string, unknown> | undefined> {
-    return this.get('settings', key);
-  }
-
-  public async setSetting(key: string, value: Record<string, unknown>): Promise<string> {
-    return this.put('settings', { id: key, ...value });
+  /**
+   * Retrieve an item by an index value from a specified object store.
+   * @param storeName - The name of the object store (must be a key of CompeteHQDB).
+   * @param indexName - The name of the index within the store (must be a key of the store's indexes).
+   * @param indexValue - The value to search for in the index (must match the index's key type).
+   * @returns The first value that matches the index (or undefined if not found).
+   */
+  async getByIndex<
+    K extends keyof CompeteHQDB,
+    IndexName extends keyof CompeteHQDB[K]['indexes']
+  >(
+    storeName: K,
+    indexName: IndexName,
+    indexValue: CompeteHQDB[K]['indexes'][IndexName]
+  ): Promise<CompeteHQDB[K]['value'] | undefined> {
+    try {
+      const db = await this.dbPromise;
+      const result = await db.getFromIndex(storeName, indexName, indexValue);
+      return result ?? undefined;
+    } catch (error) {
+      console.error(
+        `Failed to get record from index "${String(indexName)}" (value: ${String(indexValue)}) in store "${String(storeName)}":`,
+        error
+      );
+      return undefined;
+    }
   }
 }
 
-export const indexedDBService = new IndexedDBService();
+// You can use IndexedDBService.getInstance() to get the singleton and call its methods, for example:
+// const dbService = IndexedDBService.getInstance();
+// dbService.put('players', { id: 'p1', name: 'Alice', email: 'alice@example.com', teamId: 't1' });
+// dbService.get('players', 'p1').then(player => console.log(player));
