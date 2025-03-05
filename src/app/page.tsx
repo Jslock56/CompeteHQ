@@ -1,101 +1,242 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import React from 'react';
+import Link from 'next/link';
+
+// Mock data - this would come from your database in a real app
+const upcomingGames = [
+  {
+    id: '1',
+    opponent: 'Eagles',
+    date: 'Mon, Mar 10 at 6:00 PM',
+    location: 'Home Field',
+    lineupStatus: 'ready'
+  },
+  {
+    id: '2',
+    opponent: 'Tigers',
+    date: 'Mon, Mar 17 at 5:30 PM',
+    location: 'Central Park',
+    lineupStatus: 'notCreated'
+  }
+];
+
+const recentGames = [
+  {
+    id: '3',
+    opponent: 'Bears',
+    date: 'Mon, Feb 24 at 6:00 PM',
+    location: 'Home Field',
+    result: { win: true, score: '7-4' }
+  },
+  {
+    id: '4',
+    opponent: 'Hawks',
+    date: 'Mon, Feb 17 at 5:30 PM',
+    location: 'Central Park',
+    result: { win: false, score: '3-5' }
+  }
+];
+
+const fairPlayMetrics = {
+  overall: 86,
+  playingTime: 92,
+  positionVariety: 78
+};
+
+const playerAlerts = [
+  { id: '1', player: 'Alex M.', alert: 'Needs infield experience', severity: 'high' },
+  { id: '2', player: 'Jamie T.', alert: 'Hasn\'t played outfield', severity: 'medium' }
+];
+
+export default function Dashboard() {
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <div className="space-y-6">
+      {/* Header and Action Buttons */}
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
+        <div className="flex space-x-4">
+          <Link 
+            href="/games/new" 
+            className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            New Game
+          </Link>
+          <Link 
+            href="/practices/new" 
+            className="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-green-700"
           >
-            Read our docs
-          </a>
+            New Practice
+          </Link>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
+
+      {/* Tabs */}
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8">
+          <Link 
+            href="#" 
+            className="border-b-2 border-blue-500 text-blue-600 py-2 px-1 font-medium text-sm"
+          >
+            Overview
+          </Link>
+          <Link 
+            href="#" 
+            className="text-gray-500 hover:text-gray-700 py-2 px-1 font-medium text-sm"
+          >
+            Fair Play Metrics
+          </Link>
+          <Link 
+            href="#" 
+            className="text-gray-500 hover:text-gray-700 py-2 px-1 font-medium text-sm"
+          >
+            Team Status
+          </Link>
+        </nav>
+      </div>
+
+      {/* Content Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Upcoming Games */}
+        <div className="md:col-span-2">
+          <div className="bg-white p-4 rounded-md shadow border border-gray-200">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold text-gray-800">Upcoming Games</h2>
+              <Link href="/games" className="text-sm text-blue-600 hover:text-blue-800">
+                View all
+              </Link>
+            </div>
+            <div className="space-y-6">
+              {upcomingGames.map(game => (
+                <div key={game.id} className="border-b border-gray-100 pb-4 last:border-0 last:pb-0">
+                  <div className="flex justify-between items-start">
+                    <h3 className="font-bold text-gray-800">vs. {game.opponent}</h3>
+                    {game.lineupStatus === 'ready' ? (
+                      <span className="bg-green-100 text-green-800 text-xs px-3 py-1 rounded-full">
+                        Lineup Ready
+                      </span>
+                    ) : (
+                      <Link href={`/lineup/new?gameId=${game.id}`} 
+                            className="bg-blue-100 text-blue-800 text-xs px-3 py-1 rounded-full hover:bg-blue-200">
+                        Create Lineup
+                      </Link>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-500 mt-1">{game.date}</p>
+                  <p className="text-sm text-gray-500">{game.location}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Fair Play Metrics */}
+        <div>
+          <div className="bg-white p-4 rounded-md shadow border border-gray-200">
+            <h2 className="text-lg font-bold text-gray-800 mb-4">Fair Play Metrics</h2>
+            <div className="space-y-4">
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm text-gray-600">Overall Score</span>
+                  <span className="text-sm text-gray-600">{fairPlayMetrics.overall}%</span>
+                </div>
+                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div 
+                    className="h-2 bg-blue-600 rounded-full"
+                    style={{ width: `${fairPlayMetrics.overall}%` }}
+                  ></div>
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm text-gray-600">Playing Time</span>
+                  <span className="text-sm text-gray-600">{fairPlayMetrics.playingTime}%</span>
+                </div>
+                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div 
+                    className="h-2 bg-green-600 rounded-full"
+                    style={{ width: `${fairPlayMetrics.playingTime}%` }}
+                  ></div>
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm text-gray-600">Position Variety</span>
+                  <span className="text-sm text-gray-600">{fairPlayMetrics.positionVariety}%</span>
+                </div>
+                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div 
+                    className="h-2 bg-purple-600 rounded-full"
+                    style={{ width: `${fairPlayMetrics.positionVariety}%` }}
+                  ></div>
+                </div>
+              </div>
+              <Link href="/tracking" className="text-sm text-blue-600 hover:text-blue-800 inline-block mt-2">
+                View detailed metrics
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Games */}
+        <div className="md:col-span-2">
+          <div className="bg-white p-4 rounded-md shadow border border-gray-200">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold text-gray-800">Recent Games</h2>
+              <Link href="/games" className="text-sm text-blue-600 hover:text-blue-800">
+                View all
+              </Link>
+            </div>
+            <div className="space-y-6">
+              {recentGames.map(game => (
+                <div key={game.id} className="border-b border-gray-100 pb-4 last:border-0 last:pb-0">
+                  <div className="flex justify-between items-start">
+                    <h3 className="font-bold text-gray-800">vs. {game.opponent}</h3>
+                    <span className={`font-bold ${game.result.win ? 'text-green-600' : 'text-red-600'}`}>
+                      {game.result.win ? 'W' : 'L'} {game.result.score}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-500 mt-1">{game.date}</p>
+                  <p className="text-sm text-gray-500">{game.location}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Player Alerts */}
+        <div>
+          <div className="bg-white p-4 rounded-md shadow border border-gray-200">
+            <h2 className="text-lg font-bold text-gray-800 mb-4">Player Alerts</h2>
+            <div className="space-y-3">
+              {playerAlerts.map(alert => (
+                <div 
+                  key={alert.id} 
+                  className={`p-3 rounded-md ${alert.severity === 'high' ? 'bg-red-50' : 'bg-yellow-50'}`}
+                >
+                  <div className="flex items-center">
+                    <div className={`w-1 self-stretch ${alert.severity === 'high' ? 'bg-red-500' : 'bg-yellow-500'} rounded-l-md -ml-3 mr-2`}></div>
+                    <div>
+                      <p className="font-bold text-gray-900">{alert.player}</p>
+                      <p className="text-sm text-gray-600">{alert.alert}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="mt-4 bg-white p-4 rounded-md shadow border border-gray-200">
+            <Link 
+              href="/practice/new"
+              className="w-full block text-center text-sm text-gray-700 py-2 px-4 rounded bg-gray-50 hover:bg-gray-100"
+            >
+              Generate Practice Plan
+            </Link>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

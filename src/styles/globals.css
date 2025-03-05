@@ -1,26 +1,57 @@
-@import "tailwindcss";
+@import "tailwindcss/preflight";
+@import "tailwindcss/utilities";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-:root {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --foreground-rgb: 0, 0, 0;
+  --background-rgb: 243, 244, 246;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-rgb));
+}
+
+/* Position badge styles */
+.position-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  height: 2.5rem;
+  width: 2.5rem;
+  color: white;
+  font-weight: bold;
+}
+
+/* Position-specific colors */
+.position-P {
+  background-color: #ef4444;
+}
+
+.position-C {
+  background-color: #3b82f6;
+}
+
+.position-1B {
+  background-color: #10b981;
+}
+
+.position-2B {
+  background-color: #f59e0b;
+}
+
+.position-3B {
+  background-color: #8b5cf6;
+}
+
+.position-SS {
+  background-color: #ec4899;
+}
+
+.position-OF {
+  background-color: #6366f1;
+}
+
+.position-B {
+  background-color: #6b7280;
 }
