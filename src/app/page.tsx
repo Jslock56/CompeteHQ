@@ -1,9 +1,27 @@
+// src/app/page.tsx (Dashboard)
 "use client";
 
 import React from 'react';
-import Link from 'next/link';
+import NextLink from 'next/link';
+import {
+  Box,
+  Button,
+  SimpleGrid,
+  Heading,
+  Text,
+  Flex,
+  HStack,
+  VStack,
+  Progress,
+  Icon,
+  Badge,
+  Link,
+  useColorModeValue
+} from '@chakra-ui/react';
+import { AddIcon, CalendarIcon, TimeIcon, StarIcon } from '@chakra-ui/icons';
+import { Card } from '../components/common/card';
 
-// Mock data - this would come from your database in a real app
+// Mock data (would come from hooks in the real implementation)
 const upcomingGames = [
   {
     id: '1',
@@ -21,222 +39,114 @@ const upcomingGames = [
   }
 ];
 
-const recentGames = [
-  {
-    id: '3',
-    opponent: 'Bears',
-    date: 'Mon, Feb 24 at 6:00 PM',
-    location: 'Home Field',
-    result: { win: true, score: '7-4' }
-  },
-  {
-    id: '4',
-    opponent: 'Hawks',
-    date: 'Mon, Feb 17 at 5:30 PM',
-    location: 'Central Park',
-    result: { win: false, score: '3-5' }
-  }
-];
-
 const fairPlayMetrics = {
   overall: 86,
   playingTime: 92,
   positionVariety: 78
 };
 
-const playerAlerts = [
-  { id: '1', player: 'Alex M.', alert: 'Needs infield experience', severity: 'high' },
-  { id: '2', player: 'Jamie T.', alert: 'Hasn\'t played outfield', severity: 'medium' }
-];
-
 export default function Dashboard() {
+  const cardBg = useColorModeValue('white', 'gray.700');
+  
   return (
-    <div className="space-y-6">
-      {/* Header and Action Buttons */}
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
-        <div className="flex space-x-4">
-          <Link 
-            href="/games/new" 
-            className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700"
-          >
-            New Game
-          </Link>
-          <Link 
-            href="/practices/new" 
-            className="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-green-700"
-          >
-            New Practice
-          </Link>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
-          <Link 
-            href="#" 
-            className="border-b-2 border-blue-500 text-blue-600 py-2 px-1 font-medium text-sm"
-          >
-            Overview
-          </Link>
-          <Link 
-            href="#" 
-            className="text-gray-500 hover:text-gray-700 py-2 px-1 font-medium text-sm"
-          >
-            Fair Play Metrics
-          </Link>
-          <Link 
-            href="#" 
-            className="text-gray-500 hover:text-gray-700 py-2 px-1 font-medium text-sm"
-          >
-            Team Status
-          </Link>
-        </nav>
-      </div>
-
+    <Box px={{ base: 4, md: 6, lg: 8 }} py={8}>
+      {/* Header */}
+      <Flex justify="space-between" align="center" mb={6}>
+        <Heading size="lg">Dashboard</Heading>
+        <HStack spacing={3}>
+          <NextLink href="/games/new" passHref>
+            <Button as="a" leftIcon={<CalendarIcon />} colorScheme="blue">
+              New Game
+            </Button>
+          </NextLink>
+          <NextLink href="/practices/new" passHref>
+            <Button as="a" leftIcon={<AddIcon />} colorScheme="green">
+              New Practice
+            </Button>
+          </NextLink>
+        </HStack>
+      </Flex>
+      
       {/* Content Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Upcoming Games */}
-        <div className="md:col-span-2">
-          <div className="bg-white p-4 rounded-md shadow border border-gray-200">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold text-gray-800">Upcoming Games</h2>
-              <Link href="/games" className="text-sm text-blue-600 hover:text-blue-800">
-                View all
-              </Link>
-            </div>
-            <div className="space-y-6">
+      <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6}>
+        {/* Upcoming Games Card */}
+        <Box gridColumn={{ md: 'span 2' }}>
+          <Card
+            title="Upcoming Games"
+            action={
+              <NextLink href="/games" passHref>
+                <Button as="a" variant="link" size="sm" colorScheme="primary">
+                  View all
+                </Button>
+              </NextLink>
+            }
+          >
+            <VStack spacing={4} align="stretch">
               {upcomingGames.map(game => (
-                <div key={game.id} className="border-b border-gray-100 pb-4 last:border-0 last:pb-0">
-                  <div className="flex justify-between items-start">
-                    <h3 className="font-bold text-gray-800">vs. {game.opponent}</h3>
+                <Box key={game.id} p={4} borderWidth="1px" borderRadius="md" bg={cardBg}>
+                  <Flex justify="space-between" align="flex-start">
+                    <Box>
+                      <Heading size="sm" mb={1}>vs. {game.opponent}</Heading>
+                      <HStack spacing={2} color="gray.500" fontSize="sm">
+                        <Icon as={CalendarIcon} />
+                        <Text>{game.date}</Text>
+                      </HStack>
+                      <HStack spacing={2} color="gray.500" fontSize="sm" mt={1}>
+                        <Icon as={TimeIcon} />
+                        <Text>{game.location}</Text>
+                      </HStack>
+                    </Box>
                     {game.lineupStatus === 'ready' ? (
-                      <span className="bg-green-100 text-green-800 text-xs px-3 py-1 rounded-full">
-                        Lineup Ready
-                      </span>
+                      <Badge colorScheme="green">Lineup Ready</Badge>
                     ) : (
-                      <Link href={`/lineup/new?gameId=${game.id}`} 
-                            className="bg-blue-100 text-blue-800 text-xs px-3 py-1 rounded-full hover:bg-blue-200">
-                        Create Lineup
-                      </Link>
+                      <NextLink href={`/lineup/new?gameId=${game.id}`} passHref>
+                        <Button as="a" size="sm" colorScheme="primary" variant="outline">
+                          Create Lineup
+                        </Button>
+                      </NextLink>
                     )}
-                  </div>
-                  <p className="text-sm text-gray-500 mt-1">{game.date}</p>
-                  <p className="text-sm text-gray-500">{game.location}</p>
-                </div>
+                  </Flex>
+                </Box>
               ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Fair Play Metrics */}
-        <div>
-          <div className="bg-white p-4 rounded-md shadow border border-gray-200">
-            <h2 className="text-lg font-bold text-gray-800 mb-4">Fair Play Metrics</h2>
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-sm text-gray-600">Overall Score</span>
-                  <span className="text-sm text-gray-600">{fairPlayMetrics.overall}%</span>
-                </div>
-                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div 
-                    className="h-2 bg-blue-600 rounded-full"
-                    style={{ width: `${fairPlayMetrics.overall}%` }}
-                  ></div>
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-sm text-gray-600">Playing Time</span>
-                  <span className="text-sm text-gray-600">{fairPlayMetrics.playingTime}%</span>
-                </div>
-                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div 
-                    className="h-2 bg-green-600 rounded-full"
-                    style={{ width: `${fairPlayMetrics.playingTime}%` }}
-                  ></div>
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-sm text-gray-600">Position Variety</span>
-                  <span className="text-sm text-gray-600">{fairPlayMetrics.positionVariety}%</span>
-                </div>
-                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div 
-                    className="h-2 bg-purple-600 rounded-full"
-                    style={{ width: `${fairPlayMetrics.positionVariety}%` }}
-                  ></div>
-                </div>
-              </div>
-              <Link href="/tracking" className="text-sm text-blue-600 hover:text-blue-800 inline-block mt-2">
+            </VStack>
+          </Card>
+        </Box>
+        
+        {/* Fair Play Metrics Card */}
+        <Card title="Fair Play Metrics">
+          <VStack spacing={4} align="stretch">
+            <Box>
+              <Flex justify="space-between" mb={1}>
+                <Text fontSize="sm" color="gray.600">Overall Score</Text>
+                <Text fontSize="sm" fontWeight="medium">{fairPlayMetrics.overall}%</Text>
+              </Flex>
+              <Progress value={fairPlayMetrics.overall} colorScheme="blue" size="sm" borderRadius="full" />
+            </Box>
+            
+            <Box>
+              <Flex justify="space-between" mb={1}>
+                <Text fontSize="sm" color="gray.600">Playing Time</Text>
+                <Text fontSize="sm" fontWeight="medium">{fairPlayMetrics.playingTime}%</Text>
+              </Flex>
+              <Progress value={fairPlayMetrics.playingTime} colorScheme="green" size="sm" borderRadius="full" />
+            </Box>
+            
+            <Box>
+              <Flex justify="space-between" mb={1}>
+                <Text fontSize="sm" color="gray.600">Position Variety</Text>
+                <Text fontSize="sm" fontWeight="medium">{fairPlayMetrics.positionVariety}%</Text>
+              </Flex>
+              <Progress value={fairPlayMetrics.positionVariety} colorScheme="purple" size="sm" borderRadius="full" />
+            </Box>
+            
+            <NextLink href="/tracking" passHref>
+              <Link color="primary.600" fontSize="sm" fontWeight="medium">
                 View detailed metrics
               </Link>
-            </div>
-          </div>
-        </div>
-
-        {/* Recent Games */}
-        <div className="md:col-span-2">
-          <div className="bg-white p-4 rounded-md shadow border border-gray-200">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold text-gray-800">Recent Games</h2>
-              <Link href="/games" className="text-sm text-blue-600 hover:text-blue-800">
-                View all
-              </Link>
-            </div>
-            <div className="space-y-6">
-              {recentGames.map(game => (
-                <div key={game.id} className="border-b border-gray-100 pb-4 last:border-0 last:pb-0">
-                  <div className="flex justify-between items-start">
-                    <h3 className="font-bold text-gray-800">vs. {game.opponent}</h3>
-                    <span className={`font-bold ${game.result.win ? 'text-green-600' : 'text-red-600'}`}>
-                      {game.result.win ? 'W' : 'L'} {game.result.score}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-500 mt-1">{game.date}</p>
-                  <p className="text-sm text-gray-500">{game.location}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Player Alerts */}
-        <div>
-          <div className="bg-white p-4 rounded-md shadow border border-gray-200">
-            <h2 className="text-lg font-bold text-gray-800 mb-4">Player Alerts</h2>
-            <div className="space-y-3">
-              {playerAlerts.map(alert => (
-                <div 
-                  key={alert.id} 
-                  className={`p-3 rounded-md ${alert.severity === 'high' ? 'bg-red-50' : 'bg-yellow-50'}`}
-                >
-                  <div className="flex items-center">
-                    <div className={`w-1 self-stretch ${alert.severity === 'high' ? 'bg-red-500' : 'bg-yellow-500'} rounded-l-md -ml-3 mr-2`}></div>
-                    <div>
-                      <p className="font-bold text-gray-900">{alert.player}</p>
-                      <p className="text-sm text-gray-600">{alert.alert}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Quick Actions */}
-          <div className="mt-4 bg-white p-4 rounded-md shadow border border-gray-200">
-            <Link 
-              href="/practice/new"
-              className="w-full block text-center text-sm text-gray-700 py-2 px-4 rounded bg-gray-50 hover:bg-gray-100"
-            >
-              Generate Practice Plan
-            </Link>
-          </div>
-        </div>
-      </div>
-    </div>
+            </NextLink>
+          </VStack>
+        </Card>
+      </SimpleGrid>
+    </Box>
   );
 }

@@ -2,8 +2,19 @@
 "use client";
 
 import { ReactNode, useState } from "react";
+import { 
+  Box, 
+  Flex, 
+  useDisclosure, 
+  IconButton,
+  Drawer,
+  DrawerBody,
+  DrawerOverlay,
+  DrawerContent,
+  DrawerCloseButton,
+} from "@chakra-ui/react";
+import { HamburgerIcon } from '@chakra-ui/icons';
 import { Providers } from "./providers";
-import { Box, Flex, Text } from "@chakra-ui/react";
 import Header from "../components/common/header";
 import Navigation from "../components/common/navigation";
 import WidgetsSidebar from "../components/common/widgets-sidebar";
@@ -14,8 +25,9 @@ export default function RootLayout({
 }: {
   children: ReactNode;
 }) {
-  const [isSidebarOpen, setSidebarOpen] = useState(true);
-  const [isWidgetSidebarOpen, setWidgetSidebarOpen] = useState(false);
+  // Use Chakra's useDisclosure for controlling drawer/sidebar states
+  const navSidebar = useDisclosure({ defaultIsOpen: true });
+  const widgetSidebar = useDisclosure();
   
   // Get current team from context or local state
   const currentTeam = {
@@ -36,40 +48,51 @@ export default function RootLayout({
               
               {/* Main area with sidebars */}
               <Flex flex="1" overflow="hidden">
-                {/* Left Navigation Sidebar */}
+                {/* Left Navigation Sidebar - Desktop */}
                 <Box
                   bg="white"
-                  w="60"
+                  w="240px"
                   borderRightWidth="1px"
                   borderColor="gray.200"
-                  flexShrink={0}
-                  transition="all 0.3s ease-in-out"
-                  ml={isSidebarOpen ? 0 : "-60"}
-                  position="relative"
+                  display={{ base: "none", md: "block" }}
+                  flex="none"
                 >
                   <Navigation currentTeam={currentTeam} />
-                  
-                  {/* Sidebar toggle button */}
-                  <Box
-                    as="button"
-                    position="absolute"
-                    bottom="4"
-                    left="4"
-                    p="1"
-                    borderRadius="full"
-                    bg="gray.200"
-                    color="gray.600"
-                    _hover={{ bg: "gray.300" }}
-                    onClick={() => setSidebarOpen(!isSidebarOpen)}
-                    title={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-                  >
-                    {/* Icon could go here */}
-                  </Box>
                 </Box>
+                
+                {/* Mobile Navigation Drawer */}
+                <Drawer
+                  isOpen={navSidebar.isOpen}
+                  placement="left"
+                  onClose={navSidebar.onClose}
+                  display={{ base: "block", md: "none" }}
+                >
+                  <DrawerOverlay />
+                  <DrawerContent>
+                    <DrawerCloseButton />
+                    <DrawerBody p={0}>
+                      <Navigation currentTeam={currentTeam} />
+                    </DrawerBody>
+                  </DrawerContent>
+                </Drawer>
                 
                 {/* Main Content */}
                 <Box flex="1" overflow="auto">
-                  <Box as="main" p="6">
+                  {/* Mobile nav toggle */}
+                  <IconButton
+                    aria-label="Open navigation"
+                    icon={<HamburgerIcon />}
+                    display={{ base: "block", md: "none" }}
+                    position="fixed"
+                    top="70px"
+                    left="4"
+                    zIndex="dropdown"
+                    colorScheme="primary"
+                    variant="ghost"
+                    onClick={navSidebar.onOpen}
+                  />
+                  
+                  <Box as="main">
                     {children}
                   </Box>
                 </Box>
@@ -77,36 +100,13 @@ export default function RootLayout({
                 {/* Right Widgets Sidebar */}
                 <Box
                   bg="white"
-                  w="72"
+                  w="280px"
                   borderLeftWidth="1px"
                   borderColor="gray.200"
-                  flexShrink={0}
-                  transition="all 0.3s ease-in-out"
-                  transform={isWidgetSidebarOpen ? "none" : "translateX(100%)"}
+                  display={{ base: "none", lg: "block" }}
+                  flex="none"
                 >
                   <WidgetsSidebar />
-                  
-                  {/* Toggle button */}
-                  <Box
-                    as="button"
-                    position="absolute"
-                    top="20"
-                    right="0"
-                    p="1"
-                    borderRadius="md"
-                    borderRightRadius="0"
-                    bg="white"
-                    borderWidth="1px"
-                    borderColor="gray.200"
-                    borderRight="0"
-                    color="gray.600"
-                    _hover={{ bg: "gray.50" }}
-                    transform="translateX(-100%)"
-                    onClick={() => setWidgetSidebarOpen(!isWidgetSidebarOpen)}
-                    title={isWidgetSidebarOpen ? "Hide widgets" : "Show widgets"}
-                  >
-                    {/* Icon would go here */}
-                  </Box>
                 </Box>
               </Flex>
               
