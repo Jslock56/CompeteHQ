@@ -1,14 +1,123 @@
-@import "tailwindcss/preflight";
-@import "tailwindcss/utilities";
-
-:root {
-  --foreground-rgb: 0, 0, 0;
-  --background-rgb: 243, 244, 246;
+/* Basic styles without Tailwind */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  background-color: #f1f5f9;
+  color: #1e293b;
+  margin: 0;
+  padding: 0;
 }
 
-body {
-  color: rgb(var(--foreground-rgb));
-  background: rgb(var(--background-rgb));
+h1, h2, h3 {
+  color: #0f172a;
+}
+
+/* Card styles */
+.card {
+  background-color: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1rem;
+  padding: 1rem;
+}
+
+/* Button styles */
+.btn {
+  background-color: #3b82f6;
+  border: none;
+  border-radius: 0.25rem;
+  color: white;
+  cursor: pointer;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  text-align: center;
+  text-decoration: none;
+  transition: background-color 0.2s;
+}
+
+.btn:hover {
+  background-color: #2563eb;
+}
+
+.btn-secondary {
+  background-color: #6b7280;
+}
+
+.btn-secondary:hover {
+  background-color: #4b5563;
+}
+
+.btn-danger {
+  background-color: #ef4444;
+}
+
+.btn-danger:hover {
+  background-color: #dc2626;
+}
+
+/* Layout */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.mt-2 {
+  margin-top: 0.5rem;
+}
+
+.mt-4 {
+  margin-top: 1rem;
+}
+
+.mb-4 {
+  margin-bottom: 1rem;
+}
+
+/* Header styles */
+.header {
+  background-color: #1e40af;
+  color: white;
+  padding: 1rem;
+}
+
+.header-title {
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin: 0;
+}
+
+/* Table styles */
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th, td {
+  border: 1px solid #e2e8f0;
+  padding: 0.5rem;
+  text-align: left;
+}
+
+th {
+  background-color: #f8fafc;
+  font-weight: 600;
 }
 
 /* Position badge styles */
@@ -48,10 +157,14 @@ body {
   background-color: #ec4899;
 }
 
-.position-OF {
+.position-LF, .position-CF, .position-RF, .position-OF {
   background-color: #6366f1;
 }
 
-.position-B {
+.position-DH {
+  background-color: #0ea5e9;
+}
+
+.position-BN {
   background-color: #6b7280;
 }
