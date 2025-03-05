@@ -1,3 +1,5 @@
+"use client"
+
 // src/components/common/header.tsx
 import React from 'react';
 import Link from 'next/link';

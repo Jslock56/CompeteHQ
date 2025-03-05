@@ -1,3 +1,5 @@
+"use client";
+
 // C:\Users\Jared\competehq\src\components\common\navigation.tsx
 import React, { useState } from 'react';
 import Link from 'next/link';
