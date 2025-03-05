@@ -1,9 +1,9 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode } from 'react';
 import { Team } from '../types/team';
 import { useTeam } from '../hooks/use-team';
-import { useCurrentTeam } from '../hooks/use-local-storage';
+import Link from 'next/link';
 
 /**
  * Team context state interface
@@ -55,7 +55,7 @@ interface TeamContextState {
   clearCurrentTeam: () => void;
   
   /**
-   * Refresh team data from storage
+   * Reload team data from storage
    */
   refreshTeams: () => void;
 }
@@ -109,7 +109,7 @@ export function useTeamContext(): TeamContextState {
  * Renders a team selection UI if no team is selected
  */
 export function withTeam<P extends object>(Component: React.ComponentType<P>) {
-  return function WithTeamComponent(props: P & JSX.IntrinsicAttributes) {
+  return function WithTeamComponent(props: P & React.JSX.IntrinsicAttributes) {
     const { currentTeam, teams, setCurrentTeam, isLoading } = useTeamContext();
     
     if (isLoading) {
@@ -131,12 +131,12 @@ export function withTeam<P extends object>(Component: React.ComponentType<P>) {
           {teams.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-600 mb-4">No teams available. Create your first team to get started.</p>
-              <a
+              <Link
                 href="/teams/new"
                 className="inline-block bg-primary-600 text-white px-4 py-2 rounded hover:bg-primary-700 transition"
               >
                 Create Team
-              </a>
+              </Link>
             </div>
           ) : (
             <div className="space-y-2">
@@ -159,12 +159,12 @@ export function withTeam<P extends object>(Component: React.ComponentType<P>) {
               ))}
               
               <div className="pt-4 mt-4 border-t">
-                <a
+                <Link
                   href="/teams/new"
                   className="inline-block text-primary-600 hover:text-primary-800 transition"
                 >
                   + Create New Team
-                </a>
+                </Link>
               </div>
             </div>
           )}

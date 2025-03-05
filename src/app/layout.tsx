@@ -3,6 +3,7 @@
 import { ReactNode, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { TeamProvider } from "../contexts/team-context"; // Import TeamProvider
 
 // Import the CSS - this is critical
 import "../styles/globals.css";
@@ -74,114 +75,117 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <div className="min-h-screen">
-          {/* Header */}
-          <header className="header">
-            <div className="container">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center">
-                  <span className="header-title">Baseball Coach</span>
-                </div>
-                <div className="flex items-center">
-                  {currentTeam && (
-                    <span>{currentTeam.name} | {currentTeam.ageGroup}</span>
-                  )}
-                </div>
-                
-                {/* Mobile menu button */}
-                <div className="sm:hidden ml-4">
-                  <button
-                    type="button"
-                    className="btn"
-                    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                  >
-                    <span className="sr-only">Open main menu</span>
-                    {isMobileMenuOpen ? (
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    ) : (
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-                      </svg>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </header>
-          
-          {/* Mobile Navigation */}
-          {isMobileMenuOpen && (
-            <div className="card">
-              <div className="mb-4">
-                {navigationItems.map((item) => {
-                  const isActive = pathname === item.href;
-                  return (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      className={`btn ${isActive ? 'btn-secondary' : ''} mb-2 flex items-center`}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      <div className="mr-3">{item.icon}</div>
-                      {item.name}
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Main Container */}
-          <div className="flex">
-            {/* Sidebar */}
-            <aside className="hidden sm:block" style={{width: "16rem", backgroundColor: "white", borderRight: "1px solid #e2e8f0"}}>
-              <div style={{height: "100%", overflowY: "auto"}}>
-                {currentTeam && (
-                  <div style={{padding: "1rem", borderBottom: "1px solid #e2e8f0"}}>
-                    <div style={{fontSize: "0.875rem", fontWeight: "500", color: "#64748b"}}>Current Team</div>
-                    <div style={{fontSize: "1rem", fontWeight: "600", color: "#0f172a"}}>{currentTeam.name}</div>
+        {/* Wrap the entire application with TeamProvider */}
+        <TeamProvider>
+          <div className="min-h-screen">
+            {/* Header */}
+            <header className="header">
+              <div className="container">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center">
+                    <span className="header-title">Baseball Coach</span>
                   </div>
-                )}
-                <nav style={{padding: "1rem 0.5rem"}}>
+                  <div className="flex items-center">
+                    {currentTeam && (
+                      <span>{currentTeam.name} | {currentTeam.ageGroup}</span>
+                    )}
+                  </div>
+                  
+                  {/* Mobile menu button */}
+                  <div className="sm:hidden ml-4">
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                    >
+                      <span className="sr-only">Open main menu</span>
+                      {isMobileMenuOpen ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </header>
+            
+            {/* Mobile Navigation */}
+            {isMobileMenuOpen && (
+              <div className="card">
+                <div className="mb-4">
                   {navigationItems.map((item) => {
                     const isActive = pathname === item.href;
                     return (
                       <Link
                         key={item.name}
                         href={item.href}
-                        className={`flex items-center p-2 mb-2 ${
-                          isActive
-                            ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600'
-                            : ''
-                        }`}
-                        style={{borderRadius: "0.375rem"}}
+                        className={`btn ${isActive ? 'btn-secondary' : ''} mb-2 flex items-center`}
+                        onClick={() => setIsMobileMenuOpen(false)}
                       >
-                        <div className="mr-3" style={{color: isActive ? "#1d4ed8" : "#94a3b8"}}>
-                          {item.icon}
-                        </div>
+                        <div className="mr-3">{item.icon}</div>
                         {item.name}
                       </Link>
                     );
                   })}
-                </nav>
+                </div>
               </div>
-            </aside>
+            )}
 
-            {/* Main Content */}
-            <main style={{flex: "1", overflow: "auto", padding: "1.5rem"}}>
-              <div className="container">
-                {children}
-              </div>
-            </main>
+            {/* Main Container */}
+            <div className="flex">
+              {/* Sidebar */}
+              <aside className="hidden sm:block" style={{width: "16rem", backgroundColor: "white", borderRight: "1px solid #e2e8f0"}}>
+                <div style={{height: "100%", overflowY: "auto"}}>
+                  {currentTeam && (
+                    <div style={{padding: "1rem", borderBottom: "1px solid #e2e8f0"}}>
+                      <div style={{fontSize: "0.875rem", fontWeight: "500", color: "#64748b"}}>Current Team</div>
+                      <div style={{fontSize: "1rem", fontWeight: "600", color: "#0f172a"}}>{currentTeam.name}</div>
+                    </div>
+                  )}
+                  <nav style={{padding: "1rem 0.5rem"}}>
+                    {navigationItems.map((item) => {
+                      const isActive = pathname === item.href;
+                      return (
+                        <Link
+                          key={item.name}
+                          href={item.href}
+                          className={`flex items-center p-2 mb-2 ${
+                            isActive
+                              ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600'
+                              : ''
+                          }`}
+                          style={{borderRadius: "0.375rem"}}
+                        >
+                          <div className="mr-3" style={{color: isActive ? "#1d4ed8" : "#94a3b8"}}>
+                            {item.icon}
+                          </div>
+                          {item.name}
+                        </Link>
+                      );
+                    })}
+                  </nav>
+                </div>
+              </aside>
+
+              {/* Main Content */}
+              <main style={{flex: "1", overflow: "auto", padding: "1.5rem"}}>
+                <div className="container">
+                  {children}
+                </div>
+              </main>
+            </div>
+
+            {/* Footer */}
+            <footer style={{backgroundColor: "white", borderTop: "1px solid #e2e8f0", padding: "1rem", textAlign: "center", fontSize: "0.875rem", color: "#64748b"}}>
+              <p>© {new Date().getFullYear()} Baseball Coach App</p>
+            </footer>
           </div>
-
-          {/* Footer */}
-          <footer style={{backgroundColor: "white", borderTop: "1px solid #e2e8f0", padding: "1rem", textAlign: "center", fontSize: "0.875rem", color: "#64748b"}}>
-            <p>© {new Date().getFullYear()} Baseball Coach App</p>
-          </footer>
-        </div>
+        </TeamProvider>
       </body>
     </html>
   );
