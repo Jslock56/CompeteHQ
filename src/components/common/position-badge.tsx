@@ -1,7 +1,7 @@
-// src/components/common/position-badge.tsx
+'use client';
+
 import React from 'react';
-import { Box, Flex, FlexProps, Tooltip } from '@chakra-ui/react';
-import { getPositionColor } from '../../theme';
+import { Flex, FlexProps, Tooltip, useTheme } from '@chakra-ui/react';
 import { Position } from '../../types/player';
 
 export interface PositionBadgeProps extends FlexProps {
@@ -37,6 +37,8 @@ export const PositionBadge: React.FC<PositionBadgeProps> = ({
   size = 'md',
   ...props
 }) => {
+  const theme = useTheme();
+  
   // Position descriptions for tooltips
   const positionDescriptions: Record<string, string> = {
     'P': 'Pitcher',
@@ -54,6 +56,26 @@ export const PositionBadge: React.FC<PositionBadgeProps> = ({
   
   // Get the full position description for the tooltip
   const description = positionDescriptions[position] || position;
+  
+  // Get position color
+  const getPositionColor = (pos: string): string => {
+    // Use theme colors if available, otherwise use fallbacks
+    const positionColors: Record<string, string> = {
+      'P': 'red.500',
+      'C': 'blue.500',
+      '1B': 'green.500',
+      '2B': 'orange.500',
+      '3B': 'purple.500',
+      'SS': 'pink.500',
+      'LF': 'indigo.500',
+      'CF': 'indigo.500',
+      'RF': 'indigo.500',
+      'DH': 'cyan.500',
+      'BN': 'gray.500',
+    };
+    
+    return positionColors[pos] || 'gray.500';
+  };
   
   // Size variations
   const sizeStyles = {
@@ -82,7 +104,7 @@ export const PositionBadge: React.FC<PositionBadgeProps> = ({
       borderRadius="full"
       fontWeight="medium"
       color={isPrimary ? "white" : "gray.700"}
-      bg={isPrimary ? getPositionColor(position, 'bg') : "gray.200"}
+      bg={isPrimary ? getPositionColor(position) : "gray.200"}
       {...sizeStyles[size]}
       {...props}
     >

@@ -1,4 +1,5 @@
-// src/components/forms/team-form.tsx
+'use client';
+
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -11,20 +12,34 @@ import {
   Button,
   HStack,
   FormErrorMessage,
-  useToast,
   Alert,
-  AlertIcon
+  AlertIcon,
+  useToast
 } from '@chakra-ui/react';
 import { Team } from '../../types/team';
 import { useTeamContext } from '../../contexts/team-context';
 
 interface TeamFormProps {
+  /**
+   * Initial team data (for editing an existing team)
+   */
   initialTeam?: Team;
+  
+  /**
+   * Whether this form is for editing an existing team
+   */
   isEditing?: boolean;
+  
+  /**
+   * Callback when form is submitted successfully
+   */
   onSuccess?: (team: Team) => void;
 }
 
-export const TeamForm: React.FC<TeamFormProps> = ({
+/**
+ * Form for creating or editing a team
+ */
+const TeamForm: React.FC<TeamFormProps> = ({
   initialTeam,
   isEditing = false,
   onSuccess
@@ -37,30 +52,28 @@ export const TeamForm: React.FC<TeamFormProps> = ({
   const [name, setName] = useState(initialTeam?.name || '');
   const [ageGroup, setAgeGroup] = useState(initialTeam?.ageGroup || '');
   const [season, setSeason] = useState(initialTeam?.season || '');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Validation state
-  const [errors, setErrors] = useState({
-    name: '',
-    ageGroup: '',
-    season: '',
-    general: ''
-  });
+  const [errors, setErrors] = useState<{
+    name?: string;
+    ageGroup?: string;
+    season?: string;
+    general?: string;
+  }>({});
   
+  // Loading state
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Clear previous errors
-    setErrors({
-      name: '',
-      ageGroup: '',
-      season: '',
-      general: ''
-    });
+    setErrors({});
     
     // Validate form
     let isValid = true;
-    const newErrors = { ...errors };
+    const newErrors: typeof errors = {};
     
     if (!name.trim()) {
       newErrors.name = 'Team name is required';
@@ -110,7 +123,7 @@ export const TeamForm: React.FC<TeamFormProps> = ({
             router.push('/teams');
           }
         } else {
-          setErrors({ ...errors, general: 'Failed to update team' });
+          setErrors({ general: 'Failed to update team' });
         }
       } else {
         // Create new team
@@ -139,7 +152,6 @@ export const TeamForm: React.FC<TeamFormProps> = ({
       }
     } catch (error) {
       setErrors({ 
-        ...errors,
         general: `Failed to ${isEditing ? 'update' : 'create'} team: ${String(error)}` 
       });
     } finally {
@@ -169,7 +181,7 @@ export const TeamForm: React.FC<TeamFormProps> = ({
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Wildcats"
             />
-            <FormErrorMessage>{errors.name}</FormErrorMessage>
+            {errors.name && <FormErrorMessage>{errors.name}</FormErrorMessage>}
           </FormControl>
           
           {/* Age Group */}
@@ -189,7 +201,7 @@ export const TeamForm: React.FC<TeamFormProps> = ({
               <option value="16U">16 & Under</option>
               <option value="18U">18 & Under</option>
             </Select>
-            <FormErrorMessage>{errors.ageGroup}</FormErrorMessage>
+            {errors.ageGroup && <FormErrorMessage>{errors.ageGroup}</FormErrorMessage>}
           </FormControl>
           
           {/* Season */}
@@ -201,7 +213,7 @@ export const TeamForm: React.FC<TeamFormProps> = ({
               onChange={(e) => setSeason(e.target.value)}
               placeholder="e.g. Spring 2023"
             />
-            <FormErrorMessage>{errors.season}</FormErrorMessage>
+            {errors.season && <FormErrorMessage>{errors.season}</FormErrorMessage>}
           </FormControl>
         </VStack>
         

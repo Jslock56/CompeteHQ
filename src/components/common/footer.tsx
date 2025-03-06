@@ -1,52 +1,76 @@
-"use client"
+'use client';
 
-// C:\Users\Jared\competehq\src\components\common\footer.tsx
 import React from 'react';
-import Link from 'next/link';
+import { Box, Container, Flex, HStack, Text, Link } from '@chakra-ui/react';
+import NextLink from 'next/link';
 
-const Footer: React.FC = () => {
+type FooterProps = object;
+
+const Footer: React.FC<FooterProps> = () => {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-white border-t border-gray-200 mt-auto">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="md:flex md:items-center md:justify-between">
-          <div className="flex justify-center md:justify-start">
-            <Link href="/" className="flex items-center">
-              <div className="h-6 w-6 rounded bg-primary-600 flex items-center justify-center text-white font-bold mr-2">
-                C
-              </div>
-              <span className="text-sm font-medium text-gray-900">competeHQ</span>
-            </Link>
-          </div>
-          <div className="mt-4 md:mt-0">
-            <p className="text-center text-sm text-gray-500">
+    <Box as="footer" bg="white" borderTopWidth="1px" borderColor="gray.200" mt="auto">
+      <Container maxW="7xl" py={6} px={{ base: 4, md: 6, lg: 8 }}>
+        <Flex 
+          direction={{ base: 'column', md: 'row' }} 
+          align={{ base: 'center', md: 'center' }}
+          justify={{ base: 'center', md: 'space-between' }}
+          gap={{ base: 4, md: 0 }}
+        >
+          {/* Logo and Brand */}
+          <Flex align="center" justify={{ base: 'center', md: 'flex-start' }}>
+            <NextLink href="/" passHref>
+              <Flex as={Link} align="center" _hover={{ textDecoration: 'none' }}>
+                <Flex 
+                  h="6" 
+                  w="6" 
+                  rounded="md" 
+                  bg="primary.600" 
+                  align="center" 
+                  justify="center" 
+                  color="white" 
+                  fontWeight="bold" 
+                  fontSize="xs" 
+                  mr="2"
+                >
+                  C
+                </Flex>
+                <Text fontSize="sm" fontWeight="medium" color="gray.900">
+                  competeHQ
+                </Text>
+              </Flex>
+            </NextLink>
+          </Flex>
+
+          {/* Copyright */}
+          <Box mt={{ base: 4, md: 0 }}>
+            <Text textAlign="center" fontSize="sm" color="gray.500">
               &copy; {currentYear} competeHQ. All rights reserved.
-            </p>
-          </div>
-          <div className="mt-4 md:mt-0 flex justify-center space-x-6">
-            <Link 
-              href="/privacy"
-              className="text-sm text-gray-500 hover:text-gray-700"
-            >
-              Privacy Policy
-            </Link>
-            <Link 
-              href="/terms"
-              className="text-sm text-gray-500 hover:text-gray-700"
-            >
-              Terms of Service
-            </Link>
-            <Link 
-              href="/contact"
-              className="text-sm text-gray-500 hover:text-gray-700"
-            >
-              Contact
-            </Link>
-          </div>
-        </div>
-      </div>
-    </footer>
+            </Text>
+          </Box>
+
+          {/* Links */}
+          <HStack spacing={6} mt={{ base: 4, md: 0 }}>
+            <NextLink href="/privacy" passHref>
+              <Link fontSize="sm" color="gray.500" _hover={{ color: 'gray.700' }}>
+                Privacy Policy
+              </Link>
+            </NextLink>
+            <NextLink href="/terms" passHref>
+              <Link fontSize="sm" color="gray.500" _hover={{ color: 'gray.700' }}>
+                Terms of Service
+              </Link>
+            </NextLink>
+            <NextLink href="/contact" passHref>
+              <Link fontSize="sm" color="gray.500" _hover={{ color: 'gray.700' }}>
+                Contact
+              </Link>
+            </NextLink>
+          </HStack>
+        </Flex>
+      </Container>
+    </Box>
   );
 };
 
