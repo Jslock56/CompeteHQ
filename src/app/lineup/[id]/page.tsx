@@ -32,13 +32,15 @@ import {
   useColorModeValue,
   useToast
 } from '@chakra-ui/react';
-import { ChevronRightIcon, EditIcon, DownloadIcon, PrintIcon } from '@chakra-ui/icons';
-import { withTeam } from '../../../contexts/team-context';
-import { Lineup, Position } from '../../../types/lineup';
-import { Player } from '../../../types/player';
-import { Game } from '../../../types/game';
-import { storageService } from '../../../services/storage/enhanced-storage';
-import { checkLineupFairPlay } from '../../../utils/lineup-utils';
+import { ChevronRightIcon, EditIcon } from '@chakra-ui/icons';
+import { FaPrint } from 'react-icons/fa'; // Import print icon from react-icons
+import { withTeam } from '@/contexts/team-context';
+import { Lineup, Position } from '@/types/lineup';
+import { Player } from '@/types/player';
+import { Game } from '@/types/game';
+import { storageService } from '@/services/storage/enhanced-storage';
+// Import your utility functions
+import { getFairPlayIssues } from '@/utils/lineup-utils';
 
 /**
  * Page for viewing an existing lineup
@@ -46,10 +48,9 @@ import { checkLineupFairPlay } from '../../../utils/lineup-utils';
 function LineupDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const toast = useToast();
   
   // Get lineup ID from URL parameters
-  const lineupId = params.id as string;
+  const lineupId = Array.isArray(params.id) ? params.id[0] : params.id as string;
   
   // State
   const [lineup, setLineup] = useState<Lineup | null>(null);
@@ -62,12 +63,14 @@ function LineupDetailPage() {
   // Load lineup data
   useEffect(() => {
     const loadData = async () => {
+      if (!lineupId) return;
+      
       setIsLoading(true);
       setError(null);
       
       try {
         // Load lineup
-        const lineupData = storageService.lineup.getLineup(lineupId);
+        const lineupData = await storageService.lineup.getLineup(lineupId);
         
         if (!lineupData) {
           setError('Lineup not found');
@@ -78,16 +81,18 @@ function LineupDetailPage() {
         setLineup(lineupData);
         
         // Load associated game
-        const gameData = storageService.game.getGame(lineupData.gameId);
+        const gameData = await storageService.game.getGame(lineupData.gameId);
         setGame(gameData);
         
         // Load team players
-        const teamPlayers = storageService.player.getPlayersByTeam(lineupData.teamId);
+        const teamPlayers = await storageService.player.getPlayersByTeam(lineupData.teamId);
         setPlayers(teamPlayers);
         
         // Check for fair play issues
         if (lineupData && teamPlayers.length > 0) {
-          const issues = checkLineupFairPlay(lineupData, teamPlayers);
+          // Using getFairPlayIssues function instead of checkLineupFairPlay
+          // If this function doesn't exist either, you'll need to create it in lineup-utils.ts
+          const issues = getFairPlayIssues(lineupData, teamPlayers);
           setFairPlayIssues(issues);
         }
       } catch (err) {
@@ -188,14 +193,14 @@ function LineupDetailPage() {
         fontSize="sm"
       >
         <BreadcrumbItem>
-          <NextLink href="/games" passHref>
-            <BreadcrumbLink color="gray.500">Games</BreadcrumbLink>
-          </NextLink>
+          <BreadcrumbLink as={NextLink} href="/games" color="gray.500">
+            Games
+          </BreadcrumbLink>
         </BreadcrumbItem>
         <BreadcrumbItem>
-          <NextLink href={`/games/${game.id}`} passHref>
-            <BreadcrumbLink color="gray.500">vs. {game.opponent}</BreadcrumbLink>
-          </NextLink>
+          <BreadcrumbLink as={NextLink} href={`/games/${game.id}`} color="gray.500">
+            vs. {game.opponent}
+          </BreadcrumbLink>
         </BreadcrumbItem>
         <BreadcrumbItem isCurrentPage>
           <Text color="gray.500">Lineup</Text>
@@ -220,22 +225,21 @@ function LineupDetailPage() {
         
         <HStack spacing={3}>
           <Button
-            leftIcon={<PrintIcon />}
+            leftIcon={<FaPrint />}
             colorScheme="blue"
             variant="outline"
             onClick={handlePrint}
           >
             Print
           </Button>
-          <NextLink href={`/lineup/edit/${lineup.id}`} passHref>
-            <Button 
-              as="a"
-              leftIcon={<EditIcon />}
-              colorScheme="primary"
-            >
-              Edit Lineup
-            </Button>
-          </NextLink>
+          <Button 
+            as={NextLink}
+            href={`/lineup/edit/${lineup.id}`}
+            leftIcon={<EditIcon />}
+            colorScheme="primary"
+          >
+            Edit Lineup
+          </Button>
         </HStack>
       </Flex>
       

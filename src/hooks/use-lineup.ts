@@ -8,8 +8,8 @@ import { Lineup, LineupInning, Position, PositionAssignment } from '../types/lin
 import { Player } from '../types/player';
 import { storageService } from '../services/storage/enhanced-storage';
 import { 
-  createEmptyLineup, 
-  checkLineupFairPlay, 
+  createDefaultLineup, // Changed from createEmptyLineup
+  getFairPlayIssues, // Changed from checkLineupFairPlay
   copyInningPositions 
 } from '../utils/lineup-utils';
 
@@ -111,7 +111,7 @@ export const useLineup = ({
     }
     
     // If no lineup exists, create an empty one
-    return createEmptyLineup(gameId, teamId, innings);
+    return createDefaultLineup(gameId, teamId, innings); // Changed from createEmptyLineup
   });
   
   // Track whether lineup has been modified
@@ -219,7 +219,7 @@ export const useLineup = ({
   // Validate the lineup
   const validateLineup = useCallback((): string[] => {
     // Run validation to check for fair play issues
-    const issues = checkLineupFairPlay(lineup, players);
+    const issues = getFairPlayIssues(lineup, players); // Changed from checkLineupFairPlay
     
     // Update fair play issues state
     setFairPlayIssues(issues);

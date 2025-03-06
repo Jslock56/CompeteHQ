@@ -93,30 +93,31 @@ const Navigation: React.FC<NavigationProps> = ({ currentTeam }) => {
         {navigationItems.map((item) => {
           const isActive = pathname === item.href;
           return (
-            <NextLink key={item.name} href={item.href} passHref>
-              <Link
-                display="flex"
-                alignItems="center"
-                px={2}
-                py={2}
-                fontSize="sm"
-                fontWeight="medium"
-                rounded="md"
-                color={isActive ? activeTextColor : inactiveTextColor}
-                bg={isActive ? activeBgColor : 'transparent'}
-                _hover={{ bg: !isActive ? hoverBgColor : undefined }}
-                textDecoration="none"
+            <Link
+              key={item.name}
+              as={NextLink}
+              href={item.href}
+              display="flex"
+              alignItems="center"
+              px={2}
+              py={2}
+              fontSize="sm"
+              fontWeight="medium"
+              rounded="md"
+              color={isActive ? activeTextColor : inactiveTextColor}
+              bg={isActive ? activeBgColor : 'transparent'}
+              _hover={{ bg: !isActive ? hoverBgColor : undefined }}
+              textDecoration="none"
+            >
+              <Flex
+                mr={3}
+                color={isActive ? activeIconColor : inactiveIconColor}
+                _groupHover={{ color: isActive ? undefined : 'gray.500' }}
               >
-                <Flex
-                  mr={3}
-                  color={isActive ? activeIconColor : inactiveIconColor}
-                  _groupHover={{ color: isActive ? undefined : 'gray.500' }}
-                >
-                  {item.icon}
-                </Flex>
-                {item.name}
-              </Link>
-            </NextLink>
+                {item.icon}
+              </Flex>
+              {item.name}
+            </Link>
           );
         })}
       </VStack>

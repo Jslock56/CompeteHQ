@@ -8,7 +8,6 @@ import {
   TabPanels,
   TabPanel,
   Box,
-  Flex,
   useColorModeValue
 } from '@chakra-ui/react';
 

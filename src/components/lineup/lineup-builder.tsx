@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   Box,
   Button,
@@ -11,19 +11,15 @@ import {
   AlertTitle,
   AlertDescription,
   VStack,
-  HStack,
-  SimpleGrid,
-  Badge,
   Heading,
   useToast,
   useColorModeValue
 } from '@chakra-ui/react';
 import { Game } from '../../types/game';
-import { Lineup, LineupInning, Position } from '../../types/lineup';
+import { Lineup, Position } from '../../types/lineup';
 import { Player } from '../../types/player';
 import InningTabs from './inning-tabs';
-import PositionGrid from './position-grid';
-import { checkLineupFairPlay } from '../../utils/lineup-utils';
+import LineupGrid from './lineup-grid';
 import { useLineup } from '../../hooks/use-lineup';
 
 interface LineupBuilderProps {
@@ -80,12 +76,10 @@ const LineupBuilder: React.FC<LineupBuilderProps> = ({
   // UI state colors
   const alertBg = useColorModeValue('yellow.100', 'yellow.800');
   const alertBorderColor = useColorModeValue('yellow.200', 'yellow.700');
-  const successBg = useColorModeValue('green.100', 'green.800');
-  const successBorderColor = useColorModeValue('green.200', 'green.700');
   
   // Handle player assignment
-  const handleAssignPlayer = (position: Position, playerId: string) => {
-    assignPlayerToPosition(currentInning, position, playerId);
+  const handleAssignPlayer = (position: string, playerId: string) => {
+    assignPlayerToPosition(currentInning, position as Position, playerId);
   };
   
   // Handle saving the lineup
@@ -157,7 +151,7 @@ const LineupBuilder: React.FC<LineupBuilderProps> = ({
       { inning: inningNumber, positions: [] };
     
     return (
-      <PositionGrid
+      <LineupGrid
         key={`inning-${inningNumber}`}
         inning={inningData}
         players={players}

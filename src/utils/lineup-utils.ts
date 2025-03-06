@@ -287,3 +287,78 @@ export const getPositionTypeForPlayer = (player: Player, position: Position): 'p
     return 'new';
   }
 };
+
+/**
+ * Get fair play issues for a lineup as string messages
+ * 
+ * @param lineup - The lineup to check
+ * @param players - The team's player roster
+ * @returns Array of issues found as string messages
+ */
+export const getFairPlayIssues = (lineup: Lineup, players: Player[]): string[] => {
+  const issues: string[] = [];
+  const playerIds = players.filter(p => p.active).map(p => p.id);
+  
+  // Get all validation results
+  const validationResults = validateLineup(lineup, playerIds);
+  
+  // Convert validation results to user-friendly messages
+  validationResults.forEach(result => {
+    if (!result.valid && result.message) {
+      if (result.affectedPlayers && result.affectedPlayers.length > 0) {
+        // Add details for each affected player
+        result.affectedPlayers.forEach(playerId => {
+          const player = players.find(p => p.id === playerId);
+          if (player) {
+            issues.push(`${result.message}: ${getPlayerName(player)}`);
+          }
+        });
+      } else {
+        // Add the general message
+        issues.push(result.message);
+      }
+    }
+  });
+  
+  // Additional check: playing time balance
+  const totalInnings = lineup.innings.length;
+  if (totalInnings >= 3) {
+    const minInningsExpected = Math.floor(totalInnings / 2);
+    
+    // Check each player's innings
+    playerIds.forEach(playerId => {
+      const player = players.find(p => p.id === playerId);
+      if (!player || !player.active) return;
+      
+      const benchedInnings = getBenchedInnings(lineup, playerId);
+      const inningsPlayed = totalInnings - benchedInnings.length;
+      
+      // Player getting too few innings
+      if (inningsPlayed < minInningsExpected) {
+        issues.push(`${getPlayerName(player)} only plays ${inningsPlayed} of ${totalInnings} innings.`);
+      }
+      
+      // Player playing all innings when others sit out
+      if (inningsPlayed === totalInnings && players.filter(p => p.active).length > 10) {
+        issues.push(`${getPlayerName(player)} plays all ${totalInnings} innings while other players sit out.`);
+      }
+    });
+    
+    // Check for position variety
+    playerIds.forEach(playerId => {
+      const player = players.find(p => p.id === playerId);
+      if (!player || !player.active) return;
+      
+      const positionsPlayed = getPositionsPlayed(lineup, playerId);
+      const benchedInnings = getBenchedInnings(lineup, playerId);
+      const inningsPlayed = totalInnings - benchedInnings.length;
+      
+      // If player plays multiple innings but only one position
+      if (positionsPlayed.length === 1 && inningsPlayed > 1) {
+        issues.push(`${getPlayerName(player)} plays only ${positionsPlayed[0]} for all ${inningsPlayed} innings.`);
+      }
+    });
+  }
+  
+  return issues;
+};

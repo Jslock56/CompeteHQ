@@ -144,7 +144,7 @@ export interface PlayerPositionHistory {
     date: number;
     positions: {
       inning: number;
-      position: Position | 'BN';
+      position: Position;
     }[];
   }[];
 }

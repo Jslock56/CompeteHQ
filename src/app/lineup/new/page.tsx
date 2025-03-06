@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import NextLink from 'next/link';
 import {
   Box,
   Container,
@@ -15,8 +16,7 @@ import {
   useToast,
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbSeparator
+  BreadcrumbLink
 } from '@chakra-ui/react';
 import { ChevronRightIcon } from '@chakra-ui/icons';
 import { withTeam } from '../../../contexts/team-context';
@@ -25,7 +25,6 @@ import { Game } from '../../../types/game';
 import { Lineup } from '../../../types/lineup';
 import { storageService } from '../../../services/storage/enhanced-storage';
 import LineupBuilder from '../../../components/lineup/lineup-builder';
-import NextLink from 'next/link';
 
 /**
  * Page for creating a new lineup
@@ -132,21 +131,21 @@ function NewLineupPage() {
   
   return (
     <Container maxW="5xl" py={8}>
-      {/* Breadcrumbs */}
+      {/* Breadcrumbs - FIXED to avoid nested <a> tags */}
       <Breadcrumb 
         separator={<ChevronRightIcon color="gray.500" />} 
         mb={6}
         fontSize="sm"
       >
         <BreadcrumbItem>
-          <NextLink href="/games" passHref>
-            <BreadcrumbLink color="gray.500">Games</BreadcrumbLink>
-          </NextLink>
+          <BreadcrumbLink as={NextLink} href="/games" color="gray.500">
+            Games
+          </BreadcrumbLink>
         </BreadcrumbItem>
         <BreadcrumbItem>
-          <NextLink href={`/games/${game.id}`} passHref>
-            <BreadcrumbLink color="gray.500">vs. {game.opponent}</BreadcrumbLink>
-          </NextLink>
+          <BreadcrumbLink as={NextLink} href={`/games/${game.id}`} color="gray.500">
+            vs. {game.opponent}
+          </BreadcrumbLink>
         </BreadcrumbItem>
         <BreadcrumbItem isCurrentPage>
           <Text color="gray.500">Create Lineup</Text>
