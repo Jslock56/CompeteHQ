@@ -1,11 +1,37 @@
 "use client";
 
 import React, { useState } from 'react';
+import NextLink from 'next/link';
+import {
+  Box,
+  Button,
+  Flex,
+  Heading,
+  Text,
+  Input,
+  InputGroup,
+  InputLeftElement,
+  SimpleGrid,
+  HStack,
+  VStack,
+  Spinner,
+  Select,
+  Stat,
+  StatLabel,
+  StatNumber,
+  StatGroup,
+  Alert,
+  AlertIcon,
+  useColorModeValue
+} from '@chakra-ui/react';
+import { AddIcon, SearchIcon } from '@chakra-ui/icons';
 import { useTeamContext } from '../../contexts/team-context';
 import { usePlayers } from '../../hooks/use-players';
 import { withTeam } from '../../contexts/team-context';
 import { Position } from '../../types/player';
 import PlayerList from '../../components/roster/player-list';
+import { PageContainer } from '../../components/layout/page-container';
+import { Card } from '../../components/common/card';
 
 /**
  * Available filter positions
@@ -41,6 +67,7 @@ function RosterPage() {
   // States for filters
   const [showInactive, setShowInactive] = useState(false);
   const [positionFilter, setPositionFilter] = useState<Position | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   
   // Handle position filter change
   const handlePositionFilterChange = (position: Position | 'all') => {
@@ -66,102 +93,132 @@ function RosterPage() {
       alert('Failed to update player status');
     }
   };
-  
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="md:flex md:items-center md:justify-between">
-        <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-bold text-gray-900">Team Roster</h1>
-          {currentTeam && (
-            <p className="mt-1 text-sm text-gray-500">
-              {currentTeam.name} · {currentTeam.ageGroup} · {currentTeam.season}
-            </p>
-          )}
-        </div>
-      </div>
-      
-      {/* Filters */}
-      <div className="mt-6 bg-white shadow rounded-lg p-4 mb-6">
-        <div className="flex flex-wrap gap-4">
+    <PageContainer
+      title="Team Roster"
+      subtitle={currentTeam ? `${currentTeam.name} · ${currentTeam.ageGroup} · ${currentTeam.season}` : undefined}
+    >
+      {/* Filter Card */}
+      <Card mb={6}>
+        <Flex direction={{ base: "column", md: "row" }} gap={4}>
           {/* Position filter */}
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Position</label>
-            <div className="flex flex-wrap gap-2">
+          <Box flex="1">
+            <Text fontSize="sm" fontWeight="medium" color="gray.700" mb={2}>
+              Position
+            </Text>
+            <Flex flexWrap="wrap" gap={2}>
               {POSITION_FILTERS.map((position) => (
-                <button
+                <Button
                   key={position.value}
-                  type="button"
+                  size="sm"
+                  variant={(position.value === 'all' && positionFilter === null) || positionFilter === position.value ? "solid" : "outline"}
+                  colorScheme={(position.value === 'all' && positionFilter === null) || positionFilter === position.value ? "primary" : "gray"}
                   onClick={() => handlePositionFilterChange(position.value)}
-                  className={`px-3 py-1 text-sm rounded-full ${
-                    (position.value === 'all' && positionFilter === null) || positionFilter === position.value
-                      ? 'bg-primary-100 text-primary-800 font-medium'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
                 >
                   {position.label}
-                </button>
+                </Button>
               ))}
-            </div>
-          </div>
+            </Flex>
+          </Box>
           
           {/* Include inactive toggle */}
-          <div className="flex items-center">
-            <button
-              type="button"
+          <Flex align="flex-end">
+            <Button
+              colorScheme={showInactive ? "blue" : "gray"}
+              variant={showInactive ? "solid" : "outline"}
+              size="sm"
+              leftIcon={showInactive ? 
+                <Box as="span" w="4" h="4" borderRadius="full" bg="white" display="inline-flex" justifyContent="center" alignItems="center">
+                  <Box as="span" w="2" h="2" borderRadius="full" bg="blue.500" />
+                </Box> : undefined
+              }
               onClick={() => setShowInactive(!showInactive)}
-              className={`flex items-center px-3 py-2 text-sm font-medium rounded ${
-                showInactive
-                  ? 'bg-blue-100 text-blue-800'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
             >
-              {showInactive ? (
-                <svg 
-                  className="h-5 w-5 mr-1" 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  viewBox="0 0 20 20" 
-                  fill="currentColor"
-                >
-                  <path 
-                    fillRule="evenodd" 
-                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" 
-                    clipRule="evenodd" 
-                  />
-                </svg>
-              ) : (
-                <svg 
-                  className="h-5 w-5 mr-1" 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  fill="none" 
-                  viewBox="0 0 24 24" 
-                  stroke="currentColor"
-                >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M6 18L18 6M6 6l12 12" 
-                  />
-                </svg>
-              )}
-              {showInactive ? 'Showing Inactive' : 'Show Inactive'}
-            </button>
-          </div>
-        </div>
-      </div>
+              {showInactive ? "Showing Inactive" : "Show Inactive"}
+            </Button>
+          </Flex>
+        </Flex>
+      </Card>
+      
+      {/* Stats Cards */}
+      <StatGroup mb={6}>
+        <Card flex="1">
+          <Stat>
+            <StatLabel color="gray.500">Total Players</StatLabel>
+            <StatNumber>{players.length}</StatNumber>
+          </Stat>
+        </Card>
+        
+        <Card flex="1">
+          <Stat>
+            <StatLabel color="gray.500">Active Players</StatLabel>
+            <StatNumber>{players.filter(p => p.active).length}</StatNumber>
+          </Stat>
+        </Card>
+        
+        <Card flex="1">
+          <Stat>
+            <StatLabel color="gray.500">Pitchers</StatLabel>
+            <StatNumber>{players.filter(p => p.primaryPositions.includes('P')).length}</StatNumber>
+          </Stat>
+        </Card>
+        
+        <Card flex="1">
+          <Stat>
+            <StatLabel color="gray.500">Catchers</StatLabel>
+            <StatNumber>{players.filter(p => p.primaryPositions.includes('C')).length}</StatNumber>
+          </Stat>
+        </Card>
+      </StatGroup>
+      
+      {/* Search and Add Player */}
+      <Flex direction={{ base: "column", sm: "row" }} justify="space-between" gap={4} mb={6}>
+        <InputGroup maxW={{ sm: "320px" }}>
+          <InputLeftElement pointerEvents="none">
+            <SearchIcon color="gray.400" />
+          </InputLeftElement>
+          <Input 
+            placeholder="Search players..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </InputGroup>
+        
+        <NextLink href="/roster/new" passHref>
+          <Button 
+            as="a"
+            leftIcon={<AddIcon />}
+            colorScheme="primary"
+          >
+            Add Player
+          </Button>
+        </NextLink>
+      </Flex>
       
       {/* Player List */}
-      <PlayerList
-        players={players}
-        isLoading={isLoading}
-        error={error}
-        onDeletePlayer={handleDeletePlayer}
-        onToggleActive={handleToggleActive}
-        showInactive={showInactive}
-        positionFilter={positionFilter}
-        teamId={currentTeam?.id}
-      />
-    </div>
+      {isLoading ? (
+        <Flex justify="center" align="center" minH="300px" direction="column">
+          <Spinner size="xl" color="primary.500" thickness="4px" speed="0.65s" />
+          <Text mt={4} color="gray.600">Loading players...</Text>
+        </Flex>
+      ) : error ? (
+        <Alert status="error" borderRadius="md">
+          <AlertIcon />
+          {error}
+        </Alert>
+      ) : (
+        <PlayerList
+          players={players}
+          searchQuery={searchQuery}
+          showInactive={showInactive}
+          positionFilter={positionFilter}
+          onDeletePlayer={handleDeletePlayer}
+          onToggleActive={handleToggleActive}
+          teamId={currentTeam?.id}
+        />
+      )}
+    </PageContainer>
   );
 }
 
