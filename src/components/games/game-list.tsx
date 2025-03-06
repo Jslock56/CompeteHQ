@@ -1,7 +1,25 @@
-"use client";
+'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
+import NextLink from 'next/link';
+import { 
+  Box, 
+  Flex, 
+  Text, 
+  Heading, 
+  Input, 
+  InputGroup, 
+  InputLeftElement, 
+  VStack, 
+  Button, 
+  Divider, 
+  Center, 
+  Icon, 
+  Link, 
+  Skeleton,
+  useColorModeValue
+} from '@chakra-ui/react';
+import { SearchIcon, AddIcon, CalendarIcon } from '@chakra-ui/icons';
 import { Game } from '../../types/game';
 import GameCard from './game-card';
 
@@ -50,7 +68,7 @@ interface GameListProps {
 /**
  * Component for displaying a list of games
  */
-export default function GameList({
+const GameList: React.FC<GameListProps> = ({
   games,
   title,
   isLoading = false,
@@ -59,7 +77,7 @@ export default function GameList({
   isUpcoming = false,
   teamId,
   showEmptyState = true,
-}: GameListProps) {
+}) => {
   // State for search query
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -75,184 +93,119 @@ export default function GameList({
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
   };
+
+  // Background colors
+  const cardBg = useColorModeValue('white', 'gray.700');
+  const headerBg = useColorModeValue('white', 'gray.800');
+  const dividerColor = useColorModeValue('gray.200', 'gray.700');
   
   if (isLoading) {
     return (
-      <div className="animate-pulse">
-        <div className="h-6 bg-gray-200 rounded mb-4 w-1/4"></div>
-        <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-gray-100 h-32 rounded-lg"></div>
-          ))}
-        </div>
-      </div>
+      <Box borderWidth="1px" borderRadius="lg" overflow="hidden" bg={cardBg} mb={6}>
+        <Box p={4} borderBottomWidth="1px" borderColor={dividerColor} bg={headerBg}>
+          <Skeleton height="24px" width="200px" mb={4} />
+          <Skeleton height="36px" />
+        </Box>
+        <VStack spacing={4} p={4} align="stretch">
+          <Skeleton height="120px" />
+          <Skeleton height="120px" />
+          <Skeleton height="120px" />
+        </VStack>
+      </Box>
     );
   }
   
   if (error) {
     return (
-      <div className="rounded-md bg-red-50 p-4">
-        <div className="flex">
-          <div className="flex-shrink-0">
-            <svg
-              className="h-5 w-5 text-red-400"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <path
-                fillRule="evenodd"
-                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </div>
-          <div className="ml-3">
-            <p className="text-sm text-red-700">{error}</p>
-          </div>
-        </div>
-      </div>
+      <Box borderWidth="1px" borderRadius="lg" overflow="hidden" bg="red.50" mb={6} p={4}>
+        <Flex align="center">
+          <Box color="red.500" mr={3}>
+            <Icon boxSize={5} />
+          </Box>
+          <Text color="red.700">{error}</Text>
+        </Flex>
+      </Box>
     );
   }
   
   if (games.length === 0 && showEmptyState) {
     return (
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-        <div className="px-4 py-5 sm:p-6 flex justify-between items-center border-b border-gray-200">
-          <h2 className="text-lg font-medium text-gray-900">{title}</h2>
+      <Box borderWidth="1px" borderRadius="lg" overflow="hidden" bg={cardBg} mb={6}>
+        <Flex p={4} borderBottomWidth="1px" borderColor={dividerColor} justify="space-between" align="center">
+          <Heading size="md">{title}</Heading>
           {isUpcoming && teamId && (
-            <Link 
-              href={`/games/new?teamId=${teamId}`} 
-              className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-            >
-              <svg 
-                className="h-4 w-4 mr-2" 
-                xmlns="http://www.w3.org/2000/svg" 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Add Game
-            </Link>
+            <NextLink href={`/games/new?teamId=${teamId}`} passHref>
+              <Button as="a" colorScheme="primary" leftIcon={<AddIcon />} size="sm">
+                Add Game
+              </Button>
+            </NextLink>
           )}
-        </div>
-        <div className="text-center py-12">
-          <svg
-            className="mx-auto h-12 w-12 text-gray-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            aria-hidden="true"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-            />
-          </svg>
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No games found</h3>
-          <p className="mt-1 text-sm text-gray-500">
+        </Flex>
+        
+        <Center py={12} flexDirection="column">
+          <Icon as={CalendarIcon} boxSize={12} color="gray.400" mb={4} />
+          <Heading size="sm" mb={2}>No games found</Heading>
+          <Text color="gray.500" mb={6}>
             {isUpcoming
               ? 'Get started by scheduling your first game.'
               : 'Past games will appear here when available.'}
-          </p>
+          </Text>
           {isUpcoming && teamId && (
-            <div className="mt-6">
-              <Link
-                href={`/games/new?teamId=${teamId}`}
-                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-              >
-                <svg 
-                  className="h-4 w-4 mr-2" 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  fill="none" 
-                  viewBox="0 0 24 24" 
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
+            <NextLink href={`/games/new?teamId=${teamId}`} passHref>
+              <Button as="a" colorScheme="primary" leftIcon={<AddIcon />}>
                 Schedule Game
-              </Link>
-            </div>
+              </Button>
+            </NextLink>
           )}
-        </div>
-      </div>
+        </Center>
+      </Box>
     );
   }
   
   return (
-    <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
-      <div className="px-4 py-5 sm:p-6 border-b border-gray-200">
-        <div className="sm:flex sm:items-center sm:justify-between">
-          <h2 className="text-lg font-medium text-gray-900">{title}</h2>
+    <Box borderWidth="1px" borderRadius="lg" overflow="hidden" bg={cardBg} mb={6}>
+      <Box p={4} borderBottomWidth="1px" borderColor={dividerColor}>
+        <Flex justify="space-between" align="center" mb={4}>
+          <Heading size="md">{title}</Heading>
           {isUpcoming && teamId && (
-            <div className="mt-3 sm:mt-0 sm:ml-4">
-              <Link 
-                href={`/games/new?teamId=${teamId}`} 
-                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-              >
-                <svg 
-                  className="-ml-1 mr-2 h-4 w-4" 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  fill="none" 
-                  viewBox="0 0 24 24" 
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
+            <NextLink href={`/games/new?teamId=${teamId}`} passHref>
+              <Button as="a" colorScheme="primary" leftIcon={<AddIcon />} size="sm">
                 Add Game
-              </Link>
-            </div>
+              </Button>
+            </NextLink>
           )}
-        </div>
+        </Flex>
         
-        <div className="mt-4">
-          <div className="mt-1 relative rounded-md shadow-sm">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg
-                className="h-5 w-5 text-gray-400"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </div>
-            <input
-              type="text"
-              className="focus:ring-primary-500 focus:border-primary-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md"
-              placeholder="Search games by opponent or location..."
-              value={searchQuery}
-              onChange={handleSearchChange}
-            />
-          </div>
-        </div>
-      </div>
+        <InputGroup>
+          <InputLeftElement pointerEvents="none">
+            <SearchIcon color="gray.400" />
+          </InputLeftElement>
+          <Input
+            placeholder="Search games by opponent or location..."
+            value={searchQuery}
+            onChange={handleSearchChange}
+          />
+        </InputGroup>
+      </Box>
       
       {filteredGames.length === 0 ? (
-        <div className="text-center py-8">
-          <p className="text-sm text-gray-500">No games match your search.</p>
-        </div>
+        <Center py={8}>
+          <Text color="gray.500">No games match your search.</Text>
+        </Center>
       ) : (
-        <div className="divide-y divide-gray-200">
+        <VStack spacing={0} align="stretch" divider={<Divider />}>
           {filteredGames.map((game) => (
-            <div key={game.id} className="p-4">
+            <Box key={game.id} p={4}>
               <GameCard
                 game={game}
                 onDelete={onDeleteGame}
               />
-            </div>
+            </Box>
           ))}
-        </div>
+        </VStack>
       )}
-    </div>
+    </Box>
   );
-}
+};
+
+export default GameList;

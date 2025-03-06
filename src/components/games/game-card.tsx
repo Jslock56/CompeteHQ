@@ -1,7 +1,27 @@
-"use client";
+'use client';
 
 import React from 'react';
-import Link from 'next/link';
+import NextLink from 'next/link';
+import { 
+  Box, 
+  Flex, 
+  Text, 
+  Heading, 
+  Badge, 
+  HStack, 
+  Button, 
+  IconButton, 
+  useDisclosure,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Link,
+  Icon
+} from '@chakra-ui/react';
+import { CalendarIcon, TimeIcon, EditIcon, DeleteIcon, AddIcon } from '@chakra-ui/icons';
 import { Game } from '../../types/game';
 import { format } from 'date-fns';
 
@@ -25,25 +45,28 @@ interface GameCardProps {
 /**
  * Card component for displaying game information
  */
-export default function GameCard({ game, showActions = true, onDelete }: GameCardProps) {
+const GameCard: React.FC<GameCardProps> = ({ game, showActions = true, onDelete }) => {
+  // Use Chakra's modal disclosure for delete confirmation
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  
   // Format date from timestamp
   const gameDate = new Date(game.date);
   const formattedDate = format(gameDate, 'EEE, MMM d, yyyy');
   const formattedTime = format(gameDate, 'h:mm a');
   
-  // Determine status styles
-  const getStatusStyles = () => {
+  // Determine status badge color
+  const getStatusBadgeProps = () => {
     switch (game.status) {
       case 'scheduled':
-        return 'bg-blue-100 text-blue-800';
+        return { colorScheme: 'blue' };
       case 'in-progress':
-        return 'bg-yellow-100 text-yellow-800';
+        return { colorScheme: 'yellow' };
       case 'completed':
-        return 'bg-green-100 text-green-800';
+        return { colorScheme: 'green' };
       case 'canceled':
-        return 'bg-red-100 text-red-800';
+        return { colorScheme: 'red' };
       default:
-        return 'bg-gray-100 text-gray-800';
+        return { colorScheme: 'gray' };
     }
   };
   
@@ -66,131 +89,121 @@ export default function GameCard({ game, showActions = true, onDelete }: GameCar
   // Handle delete action
   const handleDelete = () => {
     if (onDelete) {
-      if (window.confirm(`Are you sure you want to delete this game against ${game.opponent}?`)) {
-        onDelete(game.id);
-      }
+      onDelete(game.id);
     }
+    onClose();
   };
   
   // Check if the game has a lineup
   const hasLineup = Boolean(game.lineupId);
   
   return (
-    <div className="bg-white overflow-hidden shadow rounded-lg border border-gray-200">
-      <div className="px-4 py-5 sm:p-6">
-        <div className="flex justify-between">
-          <div>
-            <h3 className="text-lg font-medium text-gray-900">
+    <Box
+      borderWidth="1px"
+      borderRadius="lg"
+      overflow="hidden"
+      bg="white"
+      shadow="sm"
+      transition="all 0.2s"
+    >
+      <Box p={4}>
+        <Flex justify="space-between" align="flex-start">
+          <Box>
+            <Heading as="h3" size="sm" mb={1}>
               vs. {game.opponent}
-            </h3>
-            <div className="mt-1 text-sm text-gray-500">
-              {formattedDate} at {formattedTime}
-            </div>
-            <div className="mt-1 text-sm text-gray-500">
-              {game.location}
-            </div>
-            <div className="mt-2">
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusStyles()}`}>
-                {getStatusText()}
-              </span>
-              
-              {game.status === 'scheduled' && (
-                <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                  hasLineup ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                }`}>
-                  {hasLineup ? 'Lineup Ready' : 'No Lineup'}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+            </Heading>
+            <HStack spacing={2} color="gray.500" fontSize="sm">
+              <Icon as={CalendarIcon} />
+              <Text>{formattedDate} at {formattedTime}</Text>
+            </HStack>
+            <HStack spacing={2} color="gray.500" fontSize="sm" mt={1}>
+              <Icon as={TimeIcon} />
+              <Text>{game.location}</Text>
+            </HStack>
+          </Box>
+          <HStack spacing={2}>
+            <Badge {...getStatusBadgeProps()}>
+              {getStatusText()}
+            </Badge>
+            
+            {game.status === 'scheduled' && (
+              <Badge colorScheme={hasLineup ? 'green' : 'gray'}>
+                {hasLineup ? 'Lineup Ready' : 'No Lineup'}
+              </Badge>
+            )}
+          </HStack>
+        </Flex>
+      </Box>
       
       {showActions && (
-        <div className="bg-gray-50 px-4 py-4 sm:px-6 flex justify-between items-center">
-          <Link
-            href={`/games/${game.id}`}
-            className="inline-flex items-center text-sm font-medium text-primary-600 hover:text-primary-800"
-          >
-            View Details
-            <svg
-              className="ml-1 h-5 w-5"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <path
-                fillRule="evenodd"
-                d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </Link>
-          <div className="flex space-x-2">
-            {game.status === 'scheduled' && !hasLineup && (
-              <Link
-                href={`/lineup/new?gameId=${game.id}`}
-                className="inline-flex items-center text-sm font-medium text-green-600 hover:text-green-800"
-              >
-                <svg
-                  className="h-4 w-4"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                  />
-                </svg>
-              </Link>
-            )}
-            <Link
-              href={`/games/${game.id}/edit`}
-              className="inline-flex items-center text-sm font-medium text-gray-600 hover:text-gray-800"
-            >
-              <svg
-                className="h-4 w-4"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                />
-              </svg>
+        <Flex 
+          bg="gray.50" 
+          p={3} 
+          borderTopWidth="1px" 
+          borderColor="gray.200"
+          justify="space-between"
+          align="center"
+        >
+          <NextLink href={`/games/${game.id}`} passHref>
+            <Link color="primary.600" fontWeight="medium" fontSize="sm">
+              View Details
             </Link>
-            <button
-              type="button"
-              onClick={handleDelete}
-              className="inline-flex items-center text-sm font-medium text-red-600 hover:text-red-800"
-            >
-              <svg
-                className="h-4 w-4"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
+          </NextLink>
+          
+          <HStack spacing={1}>
+            {game.status === 'scheduled' && !hasLineup && (
+              <NextLink href={`/lineup/new?gameId=${game.id}`} passHref>
+                <Button as="a" size="sm" colorScheme="green" variant="ghost" leftIcon={<AddIcon />}>
+                  Create Lineup
+                </Button>
+              </NextLink>
+            )}
+            
+            <NextLink href={`/games/${game.id}/edit`} passHref>
+              <IconButton
+                as="a"
+                aria-label="Edit game"
+                icon={<EditIcon />}
+                size="sm"
+                variant="ghost"
+                colorScheme="gray"
+              />
+            </NextLink>
+            
+            <IconButton
+              aria-label="Delete game"
+              icon={<DeleteIcon />}
+              size="sm"
+              variant="ghost"
+              colorScheme="red"
+              onClick={onOpen}
+            />
+          </HStack>
+        </Flex>
       )}
-    </div>
+      
+      {/* Delete Confirmation Modal */}
+      <Modal isOpen={isOpen} onClose={onClose} isCentered>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Confirm Deletion</ModalHeader>
+          <ModalBody>
+            Are you sure you want to delete this game against {game.opponent}? 
+            This action cannot be undone.
+            {hasLineup && " This will also delete the associated lineup."}
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="outline" mr={3} onClick={onClose}>
+              Cancel
+            </Button>
+            <Button colorScheme="red" onClick={handleDelete}>
+              Delete
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    </Box>
   );
-}
+};
+
+export default GameCard;

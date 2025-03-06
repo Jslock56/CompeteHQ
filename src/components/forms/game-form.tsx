@@ -1,7 +1,22 @@
-"use client";
+'use client';
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+  Box,
+  VStack,
+  SimpleGrid,
+  FormControl,
+  FormLabel,
+  Input,
+  Select,
+  Button,
+  HStack,
+  FormErrorMessage,
+  Alert,
+  AlertIcon,
+  useToast
+} from '@chakra-ui/react';
 import { Game } from '../../types/game';
 import { useGames } from '../../hooks/use-games';
 
@@ -25,8 +40,9 @@ interface GameFormProps {
 /**
  * Form for creating or editing a game
  */
-export default function GameForm({ initialGame, isEditing = false, onSuccess }: GameFormProps) {
+const GameForm: React.FC<GameFormProps> = ({ initialGame, isEditing = false, onSuccess }) => {
   const router = useRouter();
+  const toast = useToast();
   const { createGame, updateGame } = useGames();
   
   // Game status options
@@ -127,6 +143,14 @@ export default function GameForm({ initialGame, isEditing = false, onSuccess }: 
         });
         
         if (updated) {
+          toast({
+            title: 'Game updated.',
+            description: `Game against ${opponent} has been updated successfully.`,
+            status: 'success',
+            duration: 5000,
+            isClosable: true,
+          });
+          
           if (onSuccess) {
             onSuccess(initialGame);
           } else {
@@ -145,6 +169,14 @@ export default function GameForm({ initialGame, isEditing = false, onSuccess }: 
           status: status as Game['status']
         });
         
+        toast({
+          title: 'Game created.',
+          description: `Game against ${opponent} has been created successfully.`,
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+        });
+        
         if (onSuccess) {
           onSuccess(newGame);
         } else {
@@ -161,174 +193,108 @@ export default function GameForm({ initialGame, isEditing = false, onSuccess }: 
   };
   
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-6">
-        {/* Opponent */}
-        <div className="sm:col-span-3">
-          <label htmlFor="opponent" className="block text-sm font-medium text-gray-700">
-            Opponent
-          </label>
-          <div className="mt-1">
-            <input
-              type="text"
+    <Box as="form" onSubmit={handleSubmit}>
+      <VStack spacing={6} align="stretch">
+        {/* General error message */}
+        {errors.general && (
+          <Alert status="error" borderRadius="md">
+            <AlertIcon />
+            {errors.general}
+          </Alert>
+        )}
+        
+        {/* Form fields */}
+        <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
+          {/* Opponent */}
+          <FormControl isInvalid={!!errors.opponent} isRequired>
+            <FormLabel htmlFor="opponent">Opponent</FormLabel>
+            <Input
               id="opponent"
               value={opponent}
               onChange={(e) => setOpponent(e.target.value)}
-              className={`shadow-sm focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 rounded-md ${
-                errors.opponent ? 'border-red-300' : ''
-              }`}
               placeholder="Opponent team name"
             />
-            {errors.opponent && (
-              <p className="mt-1 text-sm text-red-600">{errors.opponent}</p>
-            )}
-          </div>
-        </div>
-        
-        {/* Date and Time */}
-        <div className="sm:col-span-3">
-          <label htmlFor="date-time" className="block text-sm font-medium text-gray-700">
-            Date and Time
-          </label>
-          <div className="mt-1">
-            <input
-              type="datetime-local"
+            {errors.opponent && <FormErrorMessage>{errors.opponent}</FormErrorMessage>}
+          </FormControl>
+          
+          {/* Date and Time */}
+          <FormControl isInvalid={!!errors.dateTime} isRequired>
+            <FormLabel htmlFor="date-time">Date and Time</FormLabel>
+            <Input
               id="date-time"
+              type="datetime-local"
               value={dateTime}
               onChange={(e) => setDateTime(e.target.value)}
-              className={`shadow-sm focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 rounded-md ${
-                errors.dateTime ? 'border-red-300' : ''
-              }`}
             />
-            {errors.dateTime && (
-              <p className="mt-1 text-sm text-red-600">{errors.dateTime}</p>
-            )}
-          </div>
-        </div>
-        
-        {/* Location */}
-        <div className="sm:col-span-4">
-          <label htmlFor="location" className="block text-sm font-medium text-gray-700">
-            Location
-          </label>
-          <div className="mt-1">
-            <input
-              type="text"
+            {errors.dateTime && <FormErrorMessage>{errors.dateTime}</FormErrorMessage>}
+          </FormControl>
+          
+          {/* Location */}
+          <FormControl isInvalid={!!errors.location} isRequired>
+            <FormLabel htmlFor="location">Location</FormLabel>
+            <Input
               id="location"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              className={`shadow-sm focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 rounded-md ${
-                errors.location ? 'border-red-300' : ''
-              }`}
               placeholder="e.g. Home Field, Central Park"
             />
-            {errors.location && (
-              <p className="mt-1 text-sm text-red-600">{errors.location}</p>
-            )}
-          </div>
-        </div>
-        
-        {/* Innings */}
-        <div className="sm:col-span-2">
-          <label htmlFor="innings" className="block text-sm font-medium text-gray-700">
-            Innings
-          </label>
-          <div className="mt-1">
-            <select
+            {errors.location && <FormErrorMessage>{errors.location}</FormErrorMessage>}
+          </FormControl>
+          
+          {/* Innings */}
+          <FormControl isInvalid={!!errors.innings} isRequired>
+            <FormLabel htmlFor="innings">Innings</FormLabel>
+            <Select
               id="innings"
               value={innings}
               onChange={(e) => setInnings(e.target.value)}
-              className={`shadow-sm focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 rounded-md ${
-                errors.innings ? 'border-red-300' : ''
-              }`}
             >
               {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
                 <option key={num} value={num}>
                   {num}
                 </option>
               ))}
-            </select>
-            {errors.innings && (
-              <p className="mt-1 text-sm text-red-600">{errors.innings}</p>
-            )}
-          </div>
-        </div>
-        
-        {/* Status */}
-        <div className="sm:col-span-3">
-          <label htmlFor="status" className="block text-sm font-medium text-gray-700">
-            Game Status
-          </label>
-          <div className="mt-1">
-            <select
+            </Select>
+            {errors.innings && <FormErrorMessage>{errors.innings}</FormErrorMessage>}
+          </FormControl>
+          
+          {/* Status */}
+          <FormControl>
+            <FormLabel htmlFor="status">Game Status</FormLabel>
+            <Select
               id="status"
               value={status}
               onChange={(e) => setStatus(e.target.value as Game['status'])}
-              className="shadow-sm focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 rounded-md"
             >
               {statusOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
               ))}
-            </select>
-          </div>
-        </div>
-      </div>
-      
-      {/* General Error Message */}
-      {errors.general && (
-        <div className="rounded-md bg-red-50 p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg
-                className="h-5 w-5 text-red-400"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                aria-hidden="true"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-red-700">{errors.general}</p>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Form Actions */}
-      <div className="flex justify-end space-x-3">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isSubmitting ? (
-            <>
-              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              Saving...
-            </>
-          ) : (
-            `${isEditing ? 'Update' : 'Create'} Game`
-          )}
-        </button>
-      </div>
-    </form>
+            </Select>
+          </FormControl>
+        </SimpleGrid>
+        
+        {/* Form Actions */}
+        <HStack spacing={3} justify="flex-end">
+          <Button 
+            variant="outline" 
+            onClick={() => router.back()}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            colorScheme="primary"
+            isLoading={isSubmitting}
+            loadingText="Saving..."
+          >
+            {isEditing ? 'Update' : 'Create'} Game
+          </Button>
+        </HStack>
+      </VStack>
+    </Box>
   );
-}
+};
+
+export default GameForm;

@@ -1,8 +1,20 @@
 "use client";
 
 import React from 'react';
-import Link from 'next/link';
+import NextLink from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { 
+  Box, 
+  Heading, 
+  Text, 
+  Breadcrumb, 
+  BreadcrumbItem, 
+  BreadcrumbLink, 
+  Container,
+  Flex,
+  Icon 
+} from '@chakra-ui/react';
+import { ChevronRightIcon } from '@chakra-ui/icons';
 import { withTeam } from '../../../contexts/team-context';
 import GameForm from '../../../components/forms/game-form';
 
@@ -15,47 +27,46 @@ function NewGamePage() {
   // const teamId = searchParams.get('teamId');
   
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <Container maxW="2xl" py={8}>
       {/* Breadcrumbs */}
-      <nav className="mb-6">
-        <ol className="flex items-center space-x-2 text-sm text-gray-500">
-          <li>
-            <Link href="/games" className="hover:text-gray-700">
+      <Breadcrumb 
+        spacing="8px" 
+        separator={<ChevronRightIcon color="gray.500" />} 
+        mb={6}
+        fontSize="sm"
+      >
+        <BreadcrumbItem>
+          <NextLink href="/games" passHref>
+            <BreadcrumbLink color="gray.500" _hover={{ color: "gray.700" }}>
               Games
-            </Link>
-          </li>
-          <li className="flex items-center">
-            <svg
-              className="h-5 w-5 text-gray-400"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <path
-                fillRule="evenodd"
-                d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                clipRule="evenodd"
-              />
-            </svg>
-            <span className="ml-2">Add New Game</span>
-          </li>
-        </ol>
-      </nav>
+            </BreadcrumbLink>
+          </NextLink>
+        </BreadcrumbItem>
+        <BreadcrumbItem isCurrentPage>
+          <Text color="gray.500">Add New Game</Text>
+        </BreadcrumbItem>
+      </Breadcrumb>
       
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Add New Game</h1>
-        <p className="text-gray-600">Schedule a new game by entering the details below.</p>
-      </div>
+      <Flex direction="column" mb={8}>
+        <Heading size="lg" color="gray.900" mb={2}>Add New Game</Heading>
+        <Text color="gray.600">Schedule a new game by entering the details below.</Text>
+      </Flex>
       
       {/* Form Card */}
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
+      <Box 
+        bg="white" 
+        shadow="sm" 
+        borderRadius="lg" 
+        overflow="hidden"
+        borderWidth="1px"
+        borderColor="gray.200"
+      >
+        <Box px={{ base: 4, sm: 6 }} py={5}>
           <GameForm />
-        </div>
-      </div>
-    </div>
+        </Box>
+      </Box>
+    </Container>
   );
 }
 
