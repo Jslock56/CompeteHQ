@@ -1,10 +1,5 @@
 # CompeteHQ - Youth Baseball Coach App
 
-<div align="center">
-  <img src="public/logo.png" alt="CompeteHQ Logo" width="200"/>
-  <p><em>Simplifying coaching, ensuring fair play</em></p>
-</div>
-
 ## Overview
 
 CompeteHQ is supposed to be a web application designed to help youth baseball coaches manage their teams more effectively. The app focuses on ensuring fair play by simplifying lineup creation, tracking player positions, and helping coaches create balanced practice plans.
