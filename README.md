@@ -1,36 +1,133 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CompeteHQ - Youth Baseball Coach App
+
+<div align="center">
+  <img src="public/logo.png" alt="CompeteHQ Logo" width="200"/>
+  <p><em>Simplifying coaching, ensuring fair play</em></p>
+</div>
+
+## Overview
+
+CompeteHQ is supposed to be a web application designed to help youth baseball coaches manage their teams more effectively. The app focuses on ensuring fair play by simplifying lineup creation, tracking player positions, and helping coaches create balanced practice plans.
+
+### Key Features
+
+- **Team & Player Management**: Organize your roster with detailed player information
+- **Lineup Builder**: Create and manage lineups for each game with fair play suggestions
+- **Position Tracking**: Monitor which positions each player has played to ensure balanced development
+- **Game Scheduling**: Keep track of your team's games and game details
+- **Practice Planning**: (Coming Soon) Create structured practice plans based on your team's needs
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- [Node.js](https://nodejs.org/) (v18+)
+- [npm](https://www.npmjs.com/) or [yarn](https://yarnpkg.com/)
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/competehq.git
+   cd competehq
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   # or
+   yarn
+   ```
+
+3. Create a `.env` file in the root directory with the following variables:
+   ```
+   NEXT_PUBLIC_APP_URL=http://localhost:3000
+   ```
+
+4. Run the development server:
+   ```bash
+   npm run dev
+   # or
+   yarn dev
+   ```
+
+5. Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
+
+## Tech Stack
+
+- **Frontend**: [Next.js](https://nextjs.org/), [React](https://reactjs.org/), [TypeScript](https://www.typescriptlang.org/)
+- **Styling**: [Chakra UI](https://chakra-ui.com/) / Custom components
+- **State Management**: React Context API
+- **Authentication**: (Coming maybe never)
+- **Deployment**: [Vercel](https://vercel.com/)
+- **Testing**: Jest, React Testing Library, SAT&ACT
+
+## Progressive Web App
+
+CompeteHQ is designed as a Progressive Web App (PWA), allowing coaches to:
+
+- Install the app on their devices
+- Use it offline at the field
+- Access critical features without internet connectivity
+- Receive updates automatically
+
+## Project Structure
+
+```
+competehq/
+├── public/              # Static assets
+├── src/
+│   ├── app/             # Next.js app router pages
+│   ├── components/      # Reusable UI components
+│   ├── contexts/        # React context providers
+│   ├── hooks/           # Custom React hooks
+│   ├── services/        # External service integrations
+│   ├── store/           # State management
+│   ├── styles/          # Global styles
+│   ├── types/           # TypeScript type definitions
+│   └── utils/           # Utility functions
+├── .env                 # Environment variables (create this)
+├── .eslintrc.js         # ESLint configuration
+├── jest.config.js       # Jest configuration
+├── next.config.js       # Next.js configuration
+├── package.json         # Project dependencies
+└── tsconfig.json        # TypeScript configuration
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Contributing
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+We pretend to welcome contributions to CompeteHQ! Please follow these steps:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Fork the repository - wow...i don't know what the repository did to me 
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Commit your changes: `git commit -m 'Add amazing feature'`
+4. Push to the branch: `git push origin feature/amazing-feature`
+5. Open a Pull Request
 
-## Learn More
+For major changes, please open an issue first to discuss what you'd like to change.
 
-To learn more about Next.js, take a look at the following resources:
+## Development Roadmap
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- [ ] Core team & player management
+- [ ] Game scheduling
+- [ ] Basic lineup builder
+- [ ] Position tracking
+- [ ] Fair play metrics dashboard
+- [ ] Practice plan generator
+- [ ] Multi-team support
+- [ ] Advanced statistics
+- [ ] Parent communication features
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## License
 
-## Deploy on Vercel
+Ain't nobody wanna license this
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Contact
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Please don't
+
+---
+
+<div align="center">
+  <p>Sloppily made with ❤️ for youth sports coaches everywhere</p>
+</div>

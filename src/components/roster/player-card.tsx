@@ -1,4 +1,3 @@
-// src/components/roster/player-card.tsx
 import React from 'react';
 import { 
   Box, 
@@ -14,9 +13,13 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
-  Button
+  Button,
+  Tooltip,
+  Spacer,
+  Wrap,
+  WrapItem
 } from '@chakra-ui/react';
-import { EditIcon, DeleteIcon, CheckIcon, CloseIcon } from '@chakra-ui/icons';
+import { EditIcon, DeleteIcon, CheckIcon, InfoIcon } from '@chakra-ui/icons';
 import NextLink from 'next/link';
 import { Player } from '../../types/player';
 import { PositionBadge } from '../common/position-badge';
@@ -57,10 +60,16 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
       boxShadow="sm"
       opacity={player.active ? 1 : 0.75}
       transition="all 0.2s"
+      width="100%"
     >
-      <Box p={4}>
-        <Flex align="center">
-          {/* Jersey Number Circle */}
+      <Flex 
+        p={4} 
+        direction={{ base: "column", md: "row" }} 
+        align={{ base: "flex-start", md: "center" }}
+        gap={4}
+      >
+        {/* First section: Jersey number and name */}
+        <Flex align="center" minWidth="180px">
           <Flex
             justify="center"
             align="center"
@@ -68,17 +77,16 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
             color="primary.700"
             fontSize="xl"
             fontWeight="bold"
-            w="12"
-            h="12"
+            w="10"
+            h="10"
             borderRadius="full"
             flexShrink={0}
           >
             {player.jerseyNumber}
           </Flex>
-          
-          <Box ml={4}>
+          <Box ml={3}>
             <Flex align="center">
-              <Text fontWeight="bold" fontSize="lg">
+              <Text fontWeight="bold" fontSize="md">
                 {player.firstName} {player.lastName}
               </Text>
               {!player.active && (
@@ -87,64 +95,76 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
                 </Badge>
               )}
             </Flex>
-            
-            {/* Primary Positions */}
-            <Box mt={2}>
-              <Text fontSize="sm" color="gray.600" mb={1}>Primary:</Text>
-              <HStack spacing={1}>
-                {player.primaryPositions.map(position => (
-                  <PositionBadge key={`primary-${position}`} position={position} isPrimary={true} />
-                ))}
-                {player.primaryPositions.length === 0 && (
-                  <Text fontSize="sm" color="gray.500">None</Text>
-                )}
-              </HStack>
-            </Box>
-            
-            {/* Secondary Positions */}
-            <Box mt={1}>
-              <Text fontSize="sm" color="gray.600" mb={1}>Secondary:</Text>
-              <HStack spacing={1}>
-                {player.secondaryPositions.map(position => (
-                  <PositionBadge key={`secondary-${position}`} position={position} isPrimary={false} />
-                ))}
-                {player.secondaryPositions.length === 0 && (
-                  <Text fontSize="sm" color="gray.500">None</Text>
-                )}
-              </HStack>
-            </Box>
           </Box>
         </Flex>
         
-        {/* Notes */}
-        {player.notes && (
-          <Text mt={3} fontSize="sm" color="gray.600" noOfLines={1}>
-            {player.notes}
-          </Text>
-        )}
-      </Box>
-      
-      {/* Actions */}
-      <Flex 
-        bg="gray.50" 
-        p={3} 
-        borderTopWidth="1px" 
-        borderColor="gray.200"
-        justify="space-between"
-      >
-        <NextLink href={`/roster/${player.id}`} passHref>
-          <Button as="a" variant="link" size="sm" colorScheme="primary">
-            View Details
-          </Button>
-        </NextLink>
+        {/* Middle section: Positions */}
+        <Flex 
+          flex="1" 
+          align={{ base: "flex-start", md: "center" }}
+          wrap="wrap"
+          gap={3}
+        >
+          {/* Primary Positions */}
+          <Flex align="center">
+            <Text fontSize="sm" color="gray.600" mr={2} whiteSpace="nowrap">Primary:</Text>
+            <Wrap spacing={1}>
+              {player.primaryPositions.map(position => (
+                <WrapItem key={`primary-${position}`}>
+                  <PositionBadge position={position} isPrimary={true} />
+                </WrapItem>
+              ))}
+              {player.primaryPositions.length === 0 && (
+                <Text fontSize="sm" color="gray.500">None</Text>
+              )}
+            </Wrap>
+          </Flex>
+          
+          {/* Secondary Positions */}
+          <Flex align="center">
+            <Text fontSize="sm" color="gray.600" mr={2} whiteSpace="nowrap">Secondary:</Text>
+            <Wrap spacing={1}>
+              {player.secondaryPositions.map(position => (
+                <WrapItem key={`secondary-${position}`}>
+                  <PositionBadge position={position} isPrimary={false} />
+                </WrapItem>
+              ))}
+              {player.secondaryPositions.length === 0 && (
+                <Text fontSize="sm" color="gray.500">None</Text>
+              )}
+            </Wrap>
+          </Flex>
+        </Flex>
         
+        <Spacer />
+        
+        {/* Actions */}
         <HStack spacing={1}>
+          {/* Info tooltip */}
+          {player.notes && (
+            <Tooltip label={player.notes} placement="top" hasArrow gutter={10} maxW="300px">
+              <IconButton
+                aria-label="Player information"
+                icon={<InfoIcon />}
+                size="sm"
+                variant="ghost"
+                colorScheme="blue"
+              />
+            </Tooltip>
+          )}
+          
+          <NextLink href={`/roster/${player.id}`} passHref>
+            <Button as="a" variant="link" size="sm" colorScheme="primary">
+              Details
+            </Button>
+          </NextLink>
+          
           <IconButton
             aria-label={player.active ? "Mark as inactive" : "Mark as active"}
-            icon={player.active ? <CloseIcon /> : <CheckIcon />}
+            icon={<CheckIcon />}
             size="sm"
             variant="ghost"
-            colorScheme={player.active ? "orange" : "green"}
+            colorScheme={player.active ? "green" : "green"}
             onClick={handleToggleActive}
           />
           

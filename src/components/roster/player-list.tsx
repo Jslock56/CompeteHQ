@@ -1,23 +1,21 @@
-"use client";
-
 import React, { useState, useMemo } from 'react';
 import NextLink from 'next/link';
 import {
   Box,
-  SimpleGrid,
+  VStack,
   Text,
   Flex,
   InputGroup,
   InputLeftElement,
   Input,
   Icon,
-  VStack,
   Spinner,
   Alert,
   AlertIcon,
-  useColorModeValue
+  useColorModeValue,
+  Button
 } from '@chakra-ui/react';
-import { SearchIcon } from '@chakra-ui/icons';
+import { SearchIcon, AddIcon } from '@chakra-ui/icons';
 import { Player, Position } from '../../types/player';
 import PlayerCard from './player-card';
 
@@ -197,26 +195,18 @@ export default function PlayerList({
           
           {players.length === 0 && (
             <NextLink href={teamId ? `/roster/new?teamId=${teamId}` : '/roster/new'} passHref>
-              <Box 
+              <Button
                 as="a"
-                px={4}
-                py={2}
-                bg="primary.600"
-                color="white"
-                fontWeight="medium"
-                borderRadius="md"
-                _hover={{ bg: "primary.700" }}
-                display="inline-flex"
-                alignItems="center"
+                colorScheme="primary"
+                leftIcon={<AddIcon />}
               >
-                <Box as="span" mr={2} fontSize="lg">+</Box>
                 Add Player
-              </Box>
+              </Button>
             </NextLink>
           )}
         </Flex>
       ) : (
-        <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={4}>
+        <VStack spacing={4} align="stretch">
           {filteredPlayers.map((player) => (
             <PlayerCard
               key={player.id}
@@ -225,7 +215,7 @@ export default function PlayerList({
               onToggleActive={onToggleActive}
             />
           ))}
-        </SimpleGrid>
+        </VStack>
       )}
     </Box>
   );
