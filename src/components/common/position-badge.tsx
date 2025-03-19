@@ -4,11 +4,11 @@ import React from 'react';
 import { Flex, FlexProps, Tooltip, useTheme } from '@chakra-ui/react';
 import { Position } from '../../types/player';
 
-export interface PositionBadgeProps extends FlexProps {
+export interface PositionBadgeProps extends Omit<FlexProps, 'position'> {
   /**
    * The position code (P, C, 1B, etc.)
    */
-  position: Position | string;
+  playerPosition: Position | string;
   
   /**
    * Whether this is a primary position (affects styling)
@@ -31,7 +31,7 @@ export interface PositionBadgeProps extends FlexProps {
  * Used throughout the app for consistent position visualization
  */
 export const PositionBadge: React.FC<PositionBadgeProps> = ({
-  position,
+  playerPosition: position,
   isPrimary = true,
   showTooltip = true,
   size = 'md',
@@ -102,7 +102,7 @@ export const PositionBadge: React.FC<PositionBadgeProps> = ({
       borderRadius="full"
       fontWeight="medium"
       color={isPrimary ? "white" : "gray.700"}
-      bg={isPrimary ? getPositionColor(position) : "gray.200"}
+      bg={isPrimary ? getPositionColor(playerPosition) : "gray.200"}
       {...sizeStyles[size]}
       {...props}
     >
