@@ -74,7 +74,7 @@ const LineupBuilderSpreadsheet: React.FC<LineupBuilderSpreadsheetProps> = ({
 
   // Function to advance to the next position
   const advanceToNextPosition = () => {
-    // Define the order of positions (removed DH as requested)
+    // Define the order of positions
     const positionOrder: Position[] = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'];
     
     // Find current position index
@@ -137,7 +137,7 @@ const LineupBuilderSpreadsheet: React.FC<LineupBuilderSpreadsheetProps> = ({
   };
 
   return (
-    <Box>
+    <Box width="100%">
       {/* Fair Play Issues Alert - Only show if there are issues */}
       {fairPlayIssues.length > 0 && (
         <Alert
@@ -169,9 +169,19 @@ const LineupBuilderSpreadsheet: React.FC<LineupBuilderSpreadsheetProps> = ({
         </Alert>
       )}
       
-      <Flex direction={{ base: 'column', lg: 'row' }} mb={6}>
-        {/* Lineup Grid */}
-        <Box flex="3" mr={{ base: 0, lg: 4 }} mb={{ base: 4, lg: 0 }}>
+      {/* Responsive Container for Lineup Builder */}
+      <Flex 
+        direction={{ base: 'column', xl: 'row' }} 
+        mb={6} 
+        width="100%"
+        gap={4}
+      >
+        {/* Lineup Grid - Use maxW to ensure it doesn't grow too large */}
+        <Box 
+          width="100%" 
+          maxWidth={{ base: "100%", xl: "calc(100% - 320px)" }} 
+          overflowX="auto"
+        >
           <LineupGridSpreadsheet 
             lineup={lineup}
             activePosition={activePosition}
@@ -184,8 +194,11 @@ const LineupBuilderSpreadsheet: React.FC<LineupBuilderSpreadsheetProps> = ({
           />
         </Box>
         
-        {/* Roster Panel */}
-        <Box flex="1" minW={{ lg: '280px' }}>
+        {/* Roster Panel - Fixed width to prevent it from being pushed off screen */}
+        <Box 
+          width={{ base: "100%", xl: "300px" }} 
+          flexShrink={0}
+        >
           <RosterPanel 
             players={players} 
             lineup={lineup}

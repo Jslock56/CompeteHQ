@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Heading, Text, Flex, Badge, useColorModeValue, Tooltip, Icon } from '@chakra-ui/react';
+import { Box, Heading, Text, Flex, useColorModeValue, Tooltip, Icon } from '@chakra-ui/react';
 import { InfoIcon } from '@chakra-ui/icons';
 import { Player } from '../../types/player';
 import { Lineup } from '../../types/lineup';
@@ -78,17 +78,23 @@ const RosterPanel: React.FC<RosterPanelProps> = ({
   );
 
   return (
-    <Box borderWidth="1px" borderColor={cardBorderColor} borderRadius="md" height="100%">
+    <Box 
+      borderWidth="1px" 
+      borderColor={cardBorderColor} 
+      borderRadius="md" 
+      height="100%"
+      width="100%"
+    >
       <Box p={3} bg={headerBg} borderBottomWidth="1px" borderColor={cardBorderColor}>
         <Heading size="sm">
           Player Roster
         </Heading>
         <Text fontSize="xs" color="gray.500" mt={1}>
-          Click a player to assign to selected position in inning {activeInning}
+          Click to add
         </Text>
       </Box>
       
-      <Box maxH="500px" overflowY="auto" p={2}>
+      <Box maxH={{ base: "300px", xl: "500px" }} overflowY="auto" p={2}>
         {activePlayers.map(player => {
           const alreadyInInning = isPlayerInInning(player.id);
           
@@ -103,72 +109,67 @@ const RosterPanel: React.FC<RosterPanelProps> = ({
               borderColor={alreadyInInning ? 'gray.200' : 'transparent'}
               mb={1}
               align="center"
-              justify="space-between"
+              width="100%"
+              onClick={() => !alreadyInInning && onPlayerSelect(player.id)}
+              cursor={alreadyInInning ? 'not-allowed' : 'pointer'}
+              opacity={alreadyInInning ? 0.6 : 1}
+              _hover={{ bg: alreadyInInning ? undefined : cardHoverBg }}
+              transition="all 0.2s"
             >
-              {/* Player info and click area */}
-              <Flex 
-                align="center"
-                flex="1"
-                onClick={() => !alreadyInInning && onPlayerSelect(player.id)}
-                cursor={alreadyInInning ? 'not-allowed' : 'pointer'}
-                opacity={alreadyInInning ? 0.6 : 1}
-                _hover={{ bg: alreadyInInning ? undefined : cardHoverBg }}
-                transition="all 0.2s"
-                borderRadius="md"
-                p={1}
+              {/* Player jersey number */}
+              <Text
+                fontWeight="bold"
+                bg="gray.100"
+                borderRadius="full"
+                size="xs"
+                px={1.5}
+                py={0.5}
+                fontSize="xs"
+                minW="20px"
+                textAlign="center"
+                flexShrink={0}
+                mr={2}
               >
-                <Text
-                  fontWeight="bold"
-                  bg="gray.100"
-                  borderRadius="full"
-                  size="xs"
-                  px={1.5}
-                  py={0.5}
-                  fontSize="xs"
-                  minW="20px"
-                  textAlign="center"
-                >
-                  {player.jerseyNumber}
-                </Text>
-                <Text ml={2} fontSize="sm">
-                  {player.lastName}, {player.firstName.charAt(0)}
-                </Text>
-              </Flex>
+                {player.jerseyNumber}
+              </Text>
               
-              {/* Badges and info icon - always interactive */}
-              <Flex align="center">
-                {alreadyInInning && (
-                  <Badge colorScheme="blue" fontSize="2xs" mr={1}>
-                    In
-                  </Badge>
-                )}
-                
-                {/* Info icon wrapped in its own box to maintain interactivity */}
-                <Box 
-                  ml={1} 
-                  opacity={1} 
-                  cursor="pointer"
-                  onClick={e => e.stopPropagation()} // Prevent triggering parent click
+              {/* Player name - expanding to fill available space */}
+              <Text 
+                fontSize="sm"
+                isTruncated
+                overflow="hidden"
+                textOverflow="ellipsis"
+                whiteSpace="nowrap"
+                flex="1"
+              >
+                {player.lastName}, {player.firstName.charAt(0)}
+              </Text>
+              
+              {/* Info icon - right next to the name with minimal spacing */}
+              <Box 
+                ml={1}
+                cursor="pointer"
+                onClick={e => e.stopPropagation()} // Prevent triggering parent click
+                flexShrink={0}
+              >
+                <Tooltip
+                  label={renderPositionBadges(player)}
+                  placement="left"
+                  hasArrow
+                  bg="white"
+                  color="black"
+                  p={0}
+                  gutter={10}
                 >
-                  <Tooltip
-                    label={renderPositionBadges(player)}
-                    placement="right"
-                    hasArrow
-                    bg="white"
-                    color="black"
-                    p={0}
-                    gutter={10}
-                  >
-                    <Icon 
-                      as={InfoIcon} 
-                      boxSize={3} 
-                      color="gray.500" 
-                      _hover={{ color: 'blue.500' }} 
-                      aria-label="View player positions"
-                    />
-                  </Tooltip>
-                </Box>
-              </Flex>
+                  <Icon 
+                    as={InfoIcon} 
+                    boxSize={3} 
+                    color="gray.500" 
+                    _hover={{ color: 'blue.500' }} 
+                    aria-label="View player positions"
+                  />
+                </Tooltip>
+              </Box>
             </Flex>
           );
         })}
