@@ -13,7 +13,6 @@ import {
   Alert,
   AlertIcon,
   Spinner,
-  Badge,
   HStack,
   Breadcrumb,
   BreadcrumbItem,
@@ -23,24 +22,17 @@ import {
   TabPanel,
   TabPanels,
   Tabs,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  useColorModeValue,
-  useToast
+  useColorModeValue
 } from '@chakra-ui/react';
 import { ChevronRightIcon, EditIcon } from '@chakra-ui/icons';
-import { FaPrint } from 'react-icons/fa'; // Import print icon from react-icons
+import { FaPrint } from 'react-icons/fa';
 import { withTeam } from '@/contexts/team-context';
-import { Lineup, Position } from '@/types/lineup';
+import { Lineup } from '@/types/lineup';
 import { Player } from '@/types/player';
 import { Game } from '@/types/game';
 import { storageService } from '@/services/storage/enhanced-storage';
-// Import your utility functions
 import { getFairPlayIssues } from '@/utils/lineup-utils';
+import LineupViewGrid from '../../../components/lineup/lineup-view-grid';
 
 /**
  * Page for viewing an existing lineup
@@ -59,6 +51,7 @@ function LineupDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fairPlayIssues, setFairPlayIssues] = useState<string[]>([]);
+  const [currentInning, setCurrentInning] = useState<number>(1);
   
   // Load lineup data
   useEffect(() => {
@@ -90,8 +83,6 @@ function LineupDetailPage() {
         
         // Check for fair play issues
         if (lineupData && teamPlayers.length > 0) {
-          // Using getFairPlayIssues function instead of checkLineupFairPlay
-          // If this function doesn't exist either, you'll need to create it in lineup-utils.ts
           const issues = getFairPlayIssues(lineupData, teamPlayers);
           setFairPlayIssues(issues);
         }
@@ -105,48 +96,6 @@ function LineupDetailPage() {
     loadData();
   }, [lineupId]);
   
-  // Get player by ID
-  const getPlayerById = (playerId: string): Player | undefined => {
-    return players.find(player => player.id === playerId);
-  };
-  
-  // Get position name
-  const getPositionName = (position: Position): string => {
-    const positionNames: Record<Position, string> = {
-      'P': 'Pitcher',
-      'C': 'Catcher',
-      '1B': 'First Base',
-      '2B': 'Second Base',
-      '3B': 'Third Base',
-      'SS': 'Shortstop',
-      'LF': 'Left Field',
-      'CF': 'Center Field',
-      'RF': 'Right Field',
-      'DH': 'Designated Hitter',
-      'BN': 'Bench'
-    };
-    
-    return positionNames[position] || position;
-  };
-  
-  const getPositionColor = (position: Position): string => {
-    const positionColors: Record<Position, string> = {
-      'P': 'red.500',
-      'C': 'blue.500',
-      '1B': 'green.500',
-      '2B': 'orange.500',
-      '3B': 'purple.500',
-      'SS': 'pink.500',
-      'LF': 'indigo.500',
-      'CF': 'indigo.500',
-      'RF': 'indigo.500',
-      'DH': 'cyan.500',
-      'BN': 'gray.500'
-    };
-    
-    return positionColors[position] || 'gray.500';
-  };
-  
   // Handle print action
   const handlePrint = () => {
     window.print();
@@ -154,7 +103,6 @@ function LineupDetailPage() {
   
   // UI colors
   const headerBg = useColorModeValue('gray.50', 'gray.700');
-  const tableBorderColor = useColorModeValue('gray.200', 'gray.600');
   const alertBg = useColorModeValue('yellow.100', 'yellow.800');
   const alertBorderColor = useColorModeValue('yellow.200', 'yellow.700');
   
@@ -274,7 +222,12 @@ function LineupDetailPage() {
         borderColor="gray.200"
         mb={6}
       >
-        <Tabs variant="enclosed" colorScheme="primary" isLazy>
+        <Tabs 
+          variant="enclosed" 
+          colorScheme="primary" 
+          isLazy
+          onChange={(index) => setCurrentInning(index + 1)}
+        >
           <TabList bg={headerBg}>
             {lineup.innings.map((inning) => (
               <Tab key={inning.inning}>Inning {inning.inning}</Tab>
@@ -284,62 +237,18 @@ function LineupDetailPage() {
           <TabPanels>
             {lineup.innings.map((inning) => (
               <TabPanel key={inning.inning} p={0}>
-                <Table variant="simple" size="md">
-                  <Thead bg={headerBg}>
-                    <Tr>
-                      <Th width="140px">Position</Th>
-                      <Th>Player</Th>
-                      <Th width="100px" isNumeric>Jersey #</Th>
-                    </Tr>
-                  </Thead>
-                  <Tbody>
-                    {/* Sort positions in a standard baseball order */}
-                    {(['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH'] as Position[])
-                      .map(position => {
-                        const assignment = inning.positions.find(p => p.position === position);
-                        const player = assignment ? getPlayerById(assignment.playerId) : undefined;
-                        
-                        return (
-                          <Tr key={position}>
-                            <Td>
-                              <Flex align="center">
-                                <Box 
-                                  w="4" 
-                                  h="4" 
-                                  borderRadius="sm" 
-                                  bg={getPositionColor(position)} 
-                                  mr={2}
-                                />
-                                <Box>
-                                  <Text fontWeight="medium">{position}</Text>
-                                  <Text fontSize="xs" color="gray.500">
-                                    {getPositionName(position)}
-                                  </Text>
-                                </Box>
-                              </Flex>
-                            </Td>
-                            <Td>
-                              {player ? (
-                                <Text>{player.lastName}, {player.firstName}</Text>
-                              ) : (
-                                <Text color="red.500">Not assigned</Text>
-                              )}
-                            </Td>
-                            <Td isNumeric>
-                              {player && <Text>{player.jerseyNumber}</Text>}
-                            </Td>
-                          </Tr>
-                        );
-                      })}
-                  </Tbody>
-                </Table>
+                <LineupViewGrid 
+                  lineup={lineup}
+                  currentInning={inning.inning}
+                  players={players}
+                />
               </TabPanel>
             ))}
           </TabPanels>
         </Tabs>
       </Box>
       
-      {/* Bench Players for each inning */}
+      {/* Lineup Summary and Analysis (optional) */}
       <Box 
         bg="white" 
         shadow="sm" 
@@ -347,51 +256,33 @@ function LineupDetailPage() {
         overflow="hidden" 
         borderWidth="1px"
         borderColor="gray.200"
+        p={6}
       >
-        <Box p={4} borderBottomWidth="1px" borderColor={tableBorderColor} bg={headerBg}>
-          <Heading size="sm">Bench Players by Inning</Heading>
-        </Box>
+        <Heading size="md" mb={4}>Lineup Summary</Heading>
+        <Text>
+          This lineup includes {players.filter(player => 
+            lineup.innings.some(inning => 
+              inning.positions.some(pos => pos.playerId === player.id)
+            )
+          ).length} players across {lineup.innings.length} innings.
+        </Text>
         
-        <Tabs variant="soft-rounded" colorScheme="blue" p={4} size="sm">
-          <TabList mb={4}>
-            {lineup.innings.map((inning) => (
-              <Tab key={inning.inning}>Inning {inning.inning}</Tab>
-            ))}
-          </TabList>
-          
-          <TabPanels>
-            {lineup.innings.map((inning) => {
-              // Find players who aren't in this inning's lineup
-              const benchPlayers = players
-                .filter(player => player.active)
-                .filter(player => !inning.positions.some(pos => pos.playerId === player.id));
-              
-              return (
-                <TabPanel key={inning.inning} p={0}>
-                  {benchPlayers.length === 0 ? (
-                    <Text color="gray.500" fontSize="sm">No players on bench for this inning.</Text>
-                  ) : (
-                    <Flex flexWrap="wrap" gap={2}>
-                      {benchPlayers.map(player => (
-                        <Badge 
-                          key={player.id} 
-                          px={2} 
-                          py={1} 
-                          borderRadius="md" 
-                          fontSize="xs"
-                          bg="gray.100"
-                          color="gray.800"
-                        >
-                          #{player.jerseyNumber} {player.lastName}, {player.firstName}
-                        </Badge>
-                      ))}
-                    </Flex>
-                  )}
-                </TabPanel>
-              );
-            })}
-          </TabPanels>
-        </Tabs>
+        {fairPlayIssues.length > 0 ? (
+          <Alert status="warning" variant="subtle" mt={4}>
+            <AlertIcon />
+            <Text fontSize="sm">
+              There are some fair play concerns with this lineup. Consider reviewing the issues
+              and adjusting player positions for more balanced participation.
+            </Text>
+          </Alert>
+        ) : (
+          <Alert status="success" variant="subtle" mt={4}>
+            <AlertIcon />
+            <Text fontSize="sm">
+              This lineup follows fair play principles with balanced position assignments.
+            </Text>
+          </Alert>
+        )}
       </Box>
     </Container>
   );

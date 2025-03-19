@@ -50,14 +50,13 @@ export const PositionBadge: React.FC<PositionBadgeProps> = ({
     'LF': 'Left Field',
     'CF': 'Center Field',
     'RF': 'Right Field',
-    'DH': 'Designated Hitter',
     'BN': 'Bench'
   };
   
   // Get the full position description for the tooltip
   const description = positionDescriptions[position] || position;
   
-  // Get position color
+  // Get position color - updated with distinct colors for outfield positions
   const getPositionColor = (pos: string): string => {
     // Use theme colors if available, otherwise use fallbacks
     const positionColors: Record<string, string> = {
@@ -67,10 +66,9 @@ export const PositionBadge: React.FC<PositionBadgeProps> = ({
       '2B': 'orange.500',
       '3B': 'purple.500',
       'SS': 'pink.500',
-      'LF': 'indigo.500',
-      'CF': 'indigo.500',
-      'RF': 'indigo.500',
-      'DH': 'cyan.500',
+      'LF': 'teal.500',      // Changed from indigo.500
+      'CF': 'cyan.500',      // Changed from indigo.500
+      'RF': 'blue.300',      // Changed from indigo.500
       'BN': 'gray.500',
     };
     

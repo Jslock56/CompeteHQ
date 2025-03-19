@@ -13,21 +13,18 @@ import {
   Alert,
   AlertIcon,
   Spinner,
-  useToast,
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink
+  useToast
 } from '@chakra-ui/react';
 import { ChevronRightIcon } from '@chakra-ui/icons';
-import { withTeam } from '../../../contexts/team-context';
-import { usePlayers } from '../../../hooks/use-players';
-import { Game } from '../../../types/game';
-import { Lineup } from '../../../types/lineup';
-import { storageService } from '../../../services/storage/enhanced-storage';
-import LineupBuilder from '../../../components/lineup/lineup-builder';
+import { withTeam } from '@/contexts/team-context';
+import { usePlayers } from '@/hooks/use-players';
+import { Game } from '@/types/game';
+import { Lineup } from '@/types/lineup';
+import { storageService } from '@/services/storage/enhanced-storage';
+import LineupBuilder from '../../../components/lineup/lineup-builder-spreadsheet';
 
 /**
- * Page for creating a new lineup
+ * Page for creating a new lineup using the improved lineup builder
  */
 function NewLineupPage() {
   const router = useRouter();
@@ -94,8 +91,29 @@ function NewLineupPage() {
       storageService.game.saveGame(updatedGame);
     }
     
-    // Redirect to game page
-    router.push(`/games/${game?.id}`);
+    // Save the lineup
+    const success = storageService.lineup.saveLineup(lineup);
+    
+    if (success) {
+      toast({
+        title: "Lineup saved",
+        description: "Your lineup has been saved successfully",
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+      
+      // Redirect to game page
+      router.push(`/games/${game?.id}`);
+    } else {
+      toast({
+        title: "Error saving lineup",
+        description: "There was a problem saving your lineup",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+    }
   };
   
   // Handle cancel
@@ -105,7 +123,7 @@ function NewLineupPage() {
   
   if (isLoading) {
     return (
-      <Container maxW="5xl" py={8}>
+      <Container maxW="6xl" py={8}>
         <Flex justify="center" align="center" minH="60vh" direction="column">
           <Spinner size="xl" color="primary.500" thickness="4px" speed="0.65s" />
           <Text mt={4} color="gray.600">Loading game data...</Text>
@@ -116,7 +134,7 @@ function NewLineupPage() {
   
   if (error || !game) {
     return (
-      <Container maxW="5xl" py={8}>
+      <Container maxW="6xl" py={8}>
         <Alert status="error" borderRadius="md" mb={6}>
           <AlertIcon />
           {error || 'Failed to load game data'}
@@ -130,27 +148,34 @@ function NewLineupPage() {
   }
   
   return (
-    <Container maxW="5xl" py={8}>
-      {/* Breadcrumbs - FIXED to avoid nested <a> tags */}
-      <Breadcrumb 
-        separator={<ChevronRightIcon color="gray.500" />} 
-        mb={6}
-        fontSize="sm"
-      >
-        <BreadcrumbItem>
-          <BreadcrumbLink as={NextLink} href="/games" color="gray.500">
+    <Container maxW="6xl" py={8}>
+      {/* Breadcrumbs */}
+      <Flex align="center" mb={6}>
+        <NextLink href="/games" passHref>
+          <Button 
+            as="a" 
+            variant="link" 
+            colorScheme="primary" 
+            leftIcon={<ChevronRightIcon transform="rotate(180deg)" />}
+            mr={2}
+          >
             Games
-          </BreadcrumbLink>
-        </BreadcrumbItem>
-        <BreadcrumbItem>
-          <BreadcrumbLink as={NextLink} href={`/games/${game.id}`} color="gray.500">
+          </Button>
+        </NextLink>
+        /
+        <NextLink href={`/games/${game.id}`} passHref>
+          <Button 
+            as="a" 
+            variant="link" 
+            colorScheme="primary" 
+            mx={2}
+          >
             vs. {game.opponent}
-          </BreadcrumbLink>
-        </BreadcrumbItem>
-        <BreadcrumbItem isCurrentPage>
-          <Text color="gray.500">Create Lineup</Text>
-        </BreadcrumbItem>
-      </Breadcrumb>
+          </Button>
+        </NextLink>
+        /
+        <Text color="gray.500" ml={2}>Create Lineup</Text>
+      </Flex>
       
       {/* Page Header */}
       <Flex 
@@ -164,7 +189,7 @@ function NewLineupPage() {
             Create Lineup
           </Heading>
           <Text color="gray.600">
-            vs. {game.opponent} • {new Date(game.date).toLocaleDateString()}
+            vs. {game.opponent} • {new Date(game.date).toLocaleDateString()} • {game.location}
           </Text>
         </Box>
         
@@ -177,15 +202,15 @@ function NewLineupPage() {
       <Alert status="info" mb={6} borderRadius="md">
         <AlertIcon />
         <Box>
-          <Text fontWeight="medium">Instructions</Text>
+          <Text fontWeight="medium">Spreadsheet-Style Lineup Builder</Text>
           <Text fontSize="sm">
-            Fill out the lineup for each inning by selecting players for each position. 
-            Use the tabs to navigate between innings.
+            Create your lineup by clicking positions in the grid and selecting players from the roster.
+            The system will automatically move to the next position after each selection.
           </Text>
         </Box>
       </Alert>
       
-      {/* Lineup Builder */}
+      {/* Improved Lineup Builder */}
       <Box 
         bg="white" 
         shadow="sm" 
@@ -193,7 +218,7 @@ function NewLineupPage() {
         overflow="hidden" 
         borderWidth="1px"
         borderColor="gray.200"
-        p={{ base: 4, md: 6 }}
+        p={{ base: 2, md: 4 }}
       >
         <LineupBuilder
           game={game}
