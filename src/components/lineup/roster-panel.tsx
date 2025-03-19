@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, VStack, Heading, Text, Flex, Badge, useColorModeValue, Tooltip, Icon } from '@chakra-ui/react';
+import { Box, Heading, Text, Flex, Badge, useColorModeValue, Tooltip, Icon } from '@chakra-ui/react';
 import { InfoIcon } from '@chakra-ui/icons';
 import { Player } from '../../types/player';
 import { Lineup } from '../../types/lineup';

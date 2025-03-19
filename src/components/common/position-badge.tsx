@@ -1,14 +1,14 @@
 'use client';
 
 import React from 'react';
-import { Flex, FlexProps, Tooltip, useTheme } from '@chakra-ui/react';
+import { Flex, FlexProps, Tooltip } from '@chakra-ui/react';
 import { Position } from '../../types/player';
 
 export interface PositionBadgeProps extends Omit<FlexProps, 'position'> {
   /**
    * The position code (P, C, 1B, etc.)
    */
-  playerPosition: Position | string;
+  position: Position | string;
   
   /**
    * Whether this is a primary position (affects styling)
@@ -31,14 +31,12 @@ export interface PositionBadgeProps extends Omit<FlexProps, 'position'> {
  * Used throughout the app for consistent position visualization
  */
 export const PositionBadge: React.FC<PositionBadgeProps> = ({
-  playerPosition: position,
+  position,
   isPrimary = true,
   showTooltip = true,
   size = 'md',
   ...props
 }) => {
-  const theme = useTheme();
-  
   // Position descriptions for tooltips
   const positionDescriptions: Record<string, string> = {
     'P': 'Pitcher',
@@ -50,6 +48,7 @@ export const PositionBadge: React.FC<PositionBadgeProps> = ({
     'LF': 'Left Field',
     'CF': 'Center Field',
     'RF': 'Right Field',
+    'DH': 'Designated Hitter',
     'BN': 'Bench'
   };
   
@@ -66,10 +65,11 @@ export const PositionBadge: React.FC<PositionBadgeProps> = ({
       '2B': 'orange.500',
       '3B': 'purple.500',
       'SS': 'pink.500',
-      'LF': 'teal.500',      // Changed from indigo.500
-      'CF': 'cyan.500',      // Changed from indigo.500
-      'RF': 'blue.300',      // Changed from indigo.500
+      'LF': 'teal.500',
+      'CF': 'cyan.500',
+      'RF': 'blue.300',
       'BN': 'gray.500',
+      'DH': 'blue.400',
     };
     
     return positionColors[pos] || 'gray.500';
@@ -102,7 +102,7 @@ export const PositionBadge: React.FC<PositionBadgeProps> = ({
       borderRadius="full"
       fontWeight="medium"
       color={isPrimary ? "white" : "gray.700"}
-      bg={isPrimary ? getPositionColor(playerPosition) : "gray.200"}
+      bg={isPrimary ? getPositionColor(position) : "gray.200"}
       {...sizeStyles[size]}
       {...props}
     >

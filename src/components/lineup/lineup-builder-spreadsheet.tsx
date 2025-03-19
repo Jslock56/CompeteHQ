@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Box, Flex, Button, Text, Alert, AlertIcon, VStack, useToast, useColorModeValue } from '@chakra-ui/react';
 import { Game } from '../../types/game';
 import { Lineup, Position } from '../../types/lineup';
