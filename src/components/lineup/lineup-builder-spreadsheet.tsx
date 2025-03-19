@@ -162,7 +162,7 @@ const LineupBuilderSpreadsheet: React.FC<LineupBuilderSpreadsheetProps> = ({
             ))}
             {fairPlayIssues.length > 3 && (
               <Text fontSize="sm" color="gray.600">
-                + {fairPlayIssues.length - 3} more issues. You'll be able to review all issues before saving.
+                + {fairPlayIssues.length - 3} more issues. You&apos;ll be able to review all issues before saving.
               </Text>
             )}
           </VStack>
