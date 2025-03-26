@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Heading, Text, Flex, useColorModeValue, Tooltip, Icon } from '@chakra-ui/react';
+import { Box, Heading, Text, Flex, useColorModeValue, Tooltip, Icon, VStack } from '@chakra-ui/react';
 import { InfoIcon } from '@chakra-ui/icons';
 import { Player } from '../../types/player';
 import { Lineup } from '../../types/lineup';
@@ -55,25 +55,8 @@ const RosterPanel: React.FC<RosterPanelProps> = ({
   // Function to create position badges for tooltip
   const renderPositionBadges = (player: Player) => (
     <Box p={2}>
-      <Text fontWeight="semibold" fontSize="xs" mb={2}>Primary Positions:</Text>
-      <Flex wrap="wrap" gap={1} mb={2}>
-        {player.primaryPositions.map(position => (
-          <PositionBadge key={position} position={position} size="sm" />
-        ))}
-        {player.primaryPositions.length === 0 && (
-          <Text fontSize="xs" color="gray.500">None</Text>
-        )}
-      </Flex>
-      
-      <Text fontWeight="semibold" fontSize="xs" mb={2}>Secondary Positions:</Text>
-      <Flex wrap="wrap" gap={1}>
-        {player.secondaryPositions.map(position => (
-          <PositionBadge key={position} position={position} size="sm" isPrimary={false} />
-        ))}
-        {player.secondaryPositions.length === 0 && (
-          <Text fontSize="xs" color="gray.500">None</Text>
-        )}
-      </Flex>
+      <Text fontWeight="semibold" fontSize="xs" mb={2}>Primary: {player.primaryPositions.join(', ')}</Text>
+      <Text fontWeight="semibold" fontSize="xs">Secondary: {player.secondaryPositions.join(', ')}</Text>
     </Box>
   );
 
@@ -85,16 +68,22 @@ const RosterPanel: React.FC<RosterPanelProps> = ({
       height="100%"
       width="100%"
     >
-      <Box p={3} bg={headerBg} borderBottomWidth="1px" borderColor={cardBorderColor}>
-        <Heading size="sm">
+      <Box p={2} bg={headerBg} borderBottomWidth="1px" borderColor={cardBorderColor}>
+        <Heading size="xs">
           Player Roster
         </Heading>
-        <Text fontSize="xs" color="gray.500" mt={1}>
+        <Text fontSize="xs" color="gray.500">
           Click to add
         </Text>
       </Box>
       
-      <Box maxH={{ base: "300px", xl: "500px" }} overflowY="auto" p={2}>
+      <VStack 
+        maxH={{ base: "300px", xl: "400px" }} 
+        overflowY="auto" 
+        p={1} 
+        spacing={0.5} 
+        align="stretch"
+      >
         {activePlayers.map(player => {
           const alreadyInInning = isPlayerInInning(player.id);
           
@@ -102,12 +91,11 @@ const RosterPanel: React.FC<RosterPanelProps> = ({
             <Flex
               key={player.id}
               py={1}
-              px={2}
+              px={1.5}
               borderRadius="md"
               bg={alreadyInInning ? 'gray.50' : cardBg}
               borderWidth="1px"
               borderColor={alreadyInInning ? 'gray.200' : 'transparent'}
-              mb={1}
               align="center"
               width="100%"
               onClick={() => !alreadyInInning && onPlayerSelect(player.id)}
@@ -115,6 +103,7 @@ const RosterPanel: React.FC<RosterPanelProps> = ({
               opacity={alreadyInInning ? 0.6 : 1}
               _hover={{ bg: alreadyInInning ? undefined : cardHoverBg }}
               transition="all 0.2s"
+              height="26px"
             >
               {/* Player jersey number */}
               <Text
@@ -123,19 +112,19 @@ const RosterPanel: React.FC<RosterPanelProps> = ({
                 borderRadius="full"
                 size="xs"
                 px={1.5}
-                py={0.5}
+                py={0}
                 fontSize="xs"
-                minW="20px"
+                minW="16px"
                 textAlign="center"
                 flexShrink={0}
-                mr={2}
+                mr={1.5}
               >
                 {player.jerseyNumber}
               </Text>
               
               {/* Player name - expanding to fill available space */}
               <Text 
-                fontSize="sm"
+                fontSize="xs"
                 isTruncated
                 overflow="hidden"
                 textOverflow="ellipsis"
@@ -145,35 +134,25 @@ const RosterPanel: React.FC<RosterPanelProps> = ({
                 {player.lastName}, {player.firstName.charAt(0)}
               </Text>
               
-              {/* Info icon - right next to the name with minimal spacing */}
-              <Box 
-                ml={1}
-                cursor="pointer"
-                onClick={e => e.stopPropagation()} // Prevent triggering parent click
-                flexShrink={0}
+              {/* Info icon */}
+              <Tooltip
+                label={renderPositionBadges(player)}
+                placement="top"
+                hasArrow
               >
-                <Tooltip
-                  label={renderPositionBadges(player)}
-                  placement="left"
-                  hasArrow
-                  bg="white"
-                  color="black"
-                  p={0}
-                  gutter={10}
-                >
-                  <Icon 
-                    as={InfoIcon} 
-                    boxSize={3} 
-                    color="gray.500" 
-                    _hover={{ color: 'blue.500' }} 
-                    aria-label="View player positions"
-                  />
-                </Tooltip>
-              </Box>
+                <Icon 
+                  as={InfoIcon} 
+                  boxSize={2.5} 
+                  color="gray.500" 
+                  _hover={{ color: 'blue.500' }} 
+                  aria-label="View player positions"
+                  ml={1}
+                />
+              </Tooltip>
             </Flex>
           );
         })}
-      </Box>
+      </VStack>
     </Box>
   );
 };

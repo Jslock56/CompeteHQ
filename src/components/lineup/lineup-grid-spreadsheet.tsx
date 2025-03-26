@@ -79,11 +79,11 @@ const LineupGridSpreadsheet: React.FC<LineupGridSpreadsheetProps> = ({
 
   return (
     <Box width="100%" overflowX="auto" borderWidth="1px" borderColor={tableBorderColor} borderRadius="md">
-      <Table variant="simple" size="sm" style={{ tableLayout: 'fixed', width: '100%' }}>
+      <Table variant="simple" size="sm">
         <Thead>
           <Tr bg={headerBg}>
             <Th 
-              width={{ base: "60px", sm: "80px" }} 
+              width="60px" 
               borderColor={tableBorderColor}
               position="sticky"
               left={0}
@@ -97,7 +97,8 @@ const LineupGridSpreadsheet: React.FC<LineupGridSpreadsheetProps> = ({
                 key={`inning-${i+1}`} 
                 textAlign="center" 
                 borderColor={tableBorderColor}
-                width={{ base: "80px", sm: "110px", md: "120px" }}
+                width="100px"
+                px={2}
               >
                 Inning {i+1}
               </Th>
@@ -131,32 +132,33 @@ const LineupGridSpreadsheet: React.FC<LineupGridSpreadsheetProps> = ({
                     _hover={{ bg: isActiveCell(position, inning) ? activeCellBg : hoverBg }}
                     cursor="pointer"
                     transition="background-color 0.2s"
-                    textAlign="center"
+                    textAlign="left"
                     borderColor={tableBorderColor}
                     p={2}
-                    maxWidth={{ base: "80px", sm: "110px", md: "120px" }}
+                    height="32px"
                   >
                     {player ? (
-                      <Flex align="center" justify="center" flexWrap="nowrap">
+                      <Flex align="center" justifyContent="flex-start" flexWrap="nowrap">
                         <Text 
                           fontWeight="medium" 
-                          mr={1} 
+                          mr={2} 
                           borderRadius="full"
                           bg="gray.200"
-                          px={2}
+                          px={1.5}
                           py={0.5}
                           fontSize="xs"
                           flexShrink={0}
+                          minWidth="20px"
+                          textAlign="center"
                         >
                           {player.jerseyNumber}
                         </Text>
                         <Text 
-                          fontSize="sm" 
-                          isTruncated 
-                          overflow="hidden" 
-                          textOverflow="ellipsis"
+                          fontSize="xs" 
+                          isTruncated={false}
+                          whiteSpace="nowrap"
                         >
-                          {player.lastName}
+                          {player.lastName}, {player.firstName.charAt(0)}
                         </Text>
                       </Flex>
                     ) : (
@@ -194,12 +196,20 @@ const LineupGridSpreadsheet: React.FC<LineupGridSpreadsheetProps> = ({
                   cursor="pointer"
                   transition="background-color 0.2s"
                   borderColor={tableBorderColor}
-                  p={2}
+                  p={1.5}
+                  height="80px"
+                  verticalAlign="top"
                 >
-                  <Box maxH="80px" overflowY="auto">
+                  <Box maxH="75px" overflowY="auto">
                     {benchPlayers.length > 0 ? (
-                      benchPlayers.slice(0, 4).map((player, idx) => (
-                        <Flex key={player.id} align="center" fontSize="xs" mb={idx < 3 ? 1 : 0}>
+                      benchPlayers.map((player, idx) => (
+                        <Flex 
+                          key={player.id} 
+                          align="center" 
+                          fontSize="xs" 
+                          mb={idx < benchPlayers.length - 1 ? 1 : 0}
+                          justifyContent="flex-start"
+                        >
                           <Text 
                             fontWeight="medium" 
                             mr={1} 
@@ -207,6 +217,8 @@ const LineupGridSpreadsheet: React.FC<LineupGridSpreadsheetProps> = ({
                             bg="gray.200"
                             px={1.5}
                             py={0.5}
+                            minWidth="20px"
+                            textAlign="center"
                           >
                             {player.jerseyNumber}
                           </Text>
@@ -217,9 +229,6 @@ const LineupGridSpreadsheet: React.FC<LineupGridSpreadsheetProps> = ({
                       ))
                     ) : (
                       <Text fontSize="xs" color="gray.400">No players on bench</Text>
-                    )}
-                    {benchPlayers.length > 4 && (
-                      <Text fontSize="xs" color="gray.500">+{benchPlayers.length - 4} more</Text>
                     )}
                   </Box>
                 </Td>

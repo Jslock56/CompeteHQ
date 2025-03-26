@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { Box, Flex, Button, Text, Alert, AlertIcon, VStack, useToast, useColorModeValue } from '@chakra-ui/react';
+import { Box, Flex, Button, useToast, IconButton, Collapse } from '@chakra-ui/react';
+import { ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
 import { Game } from '../../types/game';
 import { Lineup, Position } from '../../types/lineup';
 import { Player } from '../../types/player';
 import { useLineup } from '../../hooks/use-lineup';
 import LineupGridSpreadsheet from './lineup-grid-spreadsheet';
 import RosterPanel from './roster-panel';
+import FairPlayChecker from './FairPlayChecker'; // Import the new component
 
 interface LineupBuilderSpreadsheetProps {
   /**
@@ -40,6 +42,9 @@ const LineupBuilderSpreadsheet: React.FC<LineupBuilderSpreadsheetProps> = ({
 }) => {
   const toast = useToast();
   
+  // State for roster panel visibility
+  const [isRosterVisible, setIsRosterVisible] = useState(true);
+  
   // Initialize the lineup hook
   const {
     lineup,
@@ -58,10 +63,6 @@ const LineupBuilderSpreadsheet: React.FC<LineupBuilderSpreadsheetProps> = ({
   // State for active cell
   const [activePosition, setActivePosition] = useState<Position>('P');
   const [activeInning, setActiveInning] = useState<number>(1);
-
-  // UI colors
-  const alertBg = useColorModeValue('yellow.100', 'yellow.800');
-  const alertBorderColor = useColorModeValue('yellow.200', 'yellow.700');
 
   // Handle player selection from roster
   const handlePlayerSelect = (playerId: string) => {
@@ -138,50 +139,17 @@ const LineupBuilderSpreadsheet: React.FC<LineupBuilderSpreadsheetProps> = ({
 
   return (
     <Box width="100%">
-      {/* Fair Play Issues Alert - Only show if there are issues */}
-      {fairPlayIssues.length > 0 && (
-        <Alert
-          status="warning"
-          variant="subtle"
-          flexDirection="column"
-          alignItems="flex-start"
-          p={4}
-          bg={alertBg}
-          borderWidth="1px"
-          borderColor={alertBorderColor}
-          borderRadius="md"
-          mb={6}
-        >
-          <Flex>
-            <AlertIcon />
-            <Text fontWeight="bold">Fair Play Issues Detected</Text>
-          </Flex>
-          <VStack align="stretch" spacing={1} mt={2}>
-            {fairPlayIssues.slice(0, 3).map((issue, index) => (
-              <Text key={index} fontSize="sm">• {issue}</Text>
-            ))}
-            {fairPlayIssues.length > 3 && (
-              <Text fontSize="sm" color="gray.600">
-                + {fairPlayIssues.length - 3} more issues. You&apos;ll be able to review all issues before saving.
-              </Text>
-            )}
-          </VStack>
-        </Alert>
-      )}
+      {/* Replace the existing fair play alert with the new FairPlayChecker component */}
+      <FairPlayChecker
+        validateLineup={validateLineup}
+        fairPlayIssues={fairPlayIssues}
+        initialValidation={false} // Start with no validation shown
+      />
       
-      {/* Responsive Container for Lineup Builder */}
-      <Flex 
-        direction={{ base: 'column', xl: 'row' }} 
-        mb={6} 
-        width="100%"
-        gap={4}
-      >
-        {/* Lineup Grid - Use maxW to ensure it doesn't grow too large */}
-        <Box 
-          width="100%" 
-          maxWidth={{ base: "100%", xl: "calc(100% - 320px)" }} 
-          overflowX="auto"
-        >
+      {/* Main Content Area with Toggle */}
+      <Flex width="100%" mb={5}>
+        {/* Main Grid Area - Expands to fill available space */}
+        <Box flex="1" overflowX="auto">
           <LineupGridSpreadsheet 
             lineup={lineup}
             activePosition={activePosition}
@@ -194,18 +162,28 @@ const LineupBuilderSpreadsheet: React.FC<LineupBuilderSpreadsheetProps> = ({
           />
         </Box>
         
-        {/* Roster Panel - Fixed width to prevent it from being pushed off screen */}
-        <Box 
-          width={{ base: "100%", xl: "300px" }} 
-          flexShrink={0}
-        >
-          <RosterPanel 
-            players={players} 
-            lineup={lineup}
-            activeInning={activeInning}
-            onPlayerSelect={handlePlayerSelect}
-          />
-        </Box>
+        {/* Toggle Button */}
+        <IconButton
+          aria-label={isRosterVisible ? "Hide roster" : "Show roster"}
+          icon={isRosterVisible ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+          onClick={() => setIsRosterVisible(!isRosterVisible)}
+          size="sm"
+          my="auto"
+          mx={1}
+          variant="ghost"
+        />
+        
+        {/* Roster Panel - Collapsible */}
+        <Collapse in={isRosterVisible} style={{ width: '200px' }}>
+          <Box width="200px" flexShrink={0}>
+            <RosterPanel 
+              players={players} 
+              lineup={lineup}
+              activeInning={activeInning}
+              onPlayerSelect={handlePlayerSelect}
+            />
+          </Box>
+        </Collapse>
       </Flex>
       
       <Flex justify="flex-end">
