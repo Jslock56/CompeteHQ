@@ -65,3 +65,72 @@ export interface FairPlayParameters {
   benchWeighting: number; // How heavily to weigh bench time in fair play calculations
   recentGamesWeighting: number; // Higher weight given to recent games (0-1)
 }
+
+/**
+ * Position data for a specific game with details for visualization
+ */
+export interface GameWithPosition {
+  gameId: string;
+  gameDate: number;
+  opponent: string;
+  startingPosition: Position;
+  inningPositions: InningPosition[];
+}
+
+/**
+ * Interface for position distribution statistics
+ */
+export interface PositionDistribution {
+  playerId: string;
+  gameCount: number;
+  totalInnings: number;
+  startingPositionCounts: Record<Position, number>;
+  positionCounts: Record<Position, number>;
+  positionPercentages: Record<Position, number>;
+  positionTypeCounts: Record<string, number>;
+  positionTypePercentages: Record<string, number>;
+  startedOnBench: number; // Number of games started on bench
+  lastBenchStart?: GameWithPosition; // Last game where player started on bench
+}
+
+/**
+ * Interface for detailed position metrics across time periods
+ */
+export interface PositionMetrics {
+  playerId: string;
+  totalGames: number;
+  totalInnings: number;
+  // Metrics by time frame
+  last1Game: PositionDistribution | null;
+  last3Games: PositionDistribution | null;
+  last5Games: PositionDistribution | null;
+  last10Games: PositionDistribution | null;
+  allGames: PositionDistribution;
+  // Grid of innings played at each position for the last 10 games
+  positionGrid: GameWithPosition[];
+  // Fair play metrics
+  benchStreakCurrent: number; // Current consecutive innings on bench
+  benchStreakMax: number; // Max consecutive innings on bench
+  samePositionStreakCurrent: Position | null; // Current streak of same position
+  samePositionStreakMax: number; // Max innings at same position
+  playingTimePercentage: number; // % of total innings played
+  varietyScore: number; // 0-100 score for position variety
+}
+
+/**
+ * Interface for a team-level position distribution
+ */
+export interface TeamPositionDistribution {
+  teamId: string;
+  gameCount: number;
+  playerDistributions: Record<string, PositionDistribution>;
+  // Metrics about how balanced the playing time is across the team
+  benchTimeVariance: number; // Statistical variance of bench time
+  positionVarietyVariance: number; // Variance of position variety scores
+  fairPlayScore: number; // 0-100 score for overall team fair play
+  // Players who may need more attention
+  mostBench: string[]; // Player IDs with most bench time
+  leastVariety: string[]; // Player IDs with least position variety
+  needsInfield: string[]; // Player IDs needing infield experience
+  needsOutfield: string[]; // Player IDs needing outfield experience
+}
