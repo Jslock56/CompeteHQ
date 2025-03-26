@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from 'react';
+import * as React from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import NextLink from 'next/link';
 import {
@@ -25,6 +26,8 @@ import {
   ModalFooter,
   ModalBody,
   ModalCloseButton,
+  CardHeader,
+  CardBody,
   Alert,
   AlertIcon
 } from '@chakra-ui/react';
@@ -37,10 +40,15 @@ import {
 } from '@chakra-ui/icons';
 import { withTeam } from '../../../contexts/team-context';
 import { useSinglePlayer, usePlayers } from '../../../hooks/use-players';
+import { useGames } from '../../../hooks/use-games';
 import { Position } from '../../../types/player';
+import { Game } from '../../../types/game';
+import { Lineup } from '../../../types/lineup';
 import { PositionBadge } from '../../../components/common/position-badge';
 import { PageContainer } from '../../../components/layout/page-container';
 import { Card } from '../../../components/common/card';
+import { PlayerPositionDashboard } from '../../../components/roster/player-position-dashboard';
+import { storageService } from '../../../services/storage/enhanced-storage';
 
 /**
  * Position badge component with optional description
@@ -88,6 +96,39 @@ function PlayerDetailPage() {
   
   const { deletePlayer, togglePlayerActive } = usePlayers();
   const { player, isLoading, error } = useSinglePlayer(playerId);
+  const { games, isLoading: gamesLoading } = useGames();
+  
+  // Filter games for this player's team
+  const [playerGames, setPlayerGames] = useState<Game[]>([]);
+  const [playerLineups, setPlayerLineups] = useState<Record<string, Lineup>>({}); 
+  const [dataReady, setDataReady] = useState(false);
+  
+  useEffect(() => {
+    if (player && games) {
+      console.log("Player and games available:", player.id, games.length);
+      
+      // Filter games for player's team
+      const filteredGames = games.filter(game => game.teamId === player.teamId);
+      setPlayerGames(filteredGames);
+      
+      // Get relevant lineups
+      const relevantLineups = {};
+      filteredGames.forEach(game => {
+        if (game.lineupId) {
+          // Fetch lineup from storage
+          const lineup = storageService.lineup.getLineup(game.lineupId);
+          if (lineup) {
+            relevantLineups[game.lineupId] = lineup;
+          }
+        }
+      });
+      setPlayerLineups(relevantLineups);
+      
+      // Set data as ready
+      setDataReady(true);
+      console.log("Data ready, player games:", filteredGames.length, "lineups:", Object.keys(relevantLineups).length);
+    }
+  }, [player, games]);
   
   // State for delete confirmation
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -283,40 +324,84 @@ function PlayerDetailPage() {
         )}
       </Card>
       
-      {/* Position History - To be implemented in future phase */}
-      <Card>
-        <Flex justify="space-between" align="center" mb={4}>
-          <Box>
-            <Heading size="md">Position History</Heading>
-            <Text color="gray.500" fontSize="sm">
-              Tracking of positions played over time will be available in a future update.
-            </Text>
+      {/* Position Tracking Dashboard */}
+      {dataReady ? (
+        playerGames.length > 0 ? (
+          <PlayerPositionDashboard player={player} games={playerGames} lineups={playerLineups} />
+        ) : (
+          <Box
+            bg="white"
+            borderWidth="1px"
+            borderColor="gray.200"
+            borderRadius="lg"
+            overflow="hidden"
+            shadow="sm"
+            mb={6}
+          >
+            <Flex 
+              px={{ base: 4, md: 6 }}
+              py={4}
+              alignItems="center"
+              justifyContent="space-between"
+              borderBottomWidth={1}
+              borderBottomColor="gray.200"
+            >
+              <Heading size="md">Position History</Heading>
+            </Flex>
+            <Box px={{ base: 4, md: 6 }} py={5}>
+              <Flex 
+                direction="column" 
+                align="center" 
+                justify="center" 
+                py={8} 
+                bg="gray.50" 
+                borderRadius="md"
+              >
+                <Box color="gray.400" mb={3}>
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                </Box>
+                <Heading as="h3" size="sm" fontWeight="medium" mb={1}>
+                  No position history yet
+                </Heading>
+                <Text color="gray.500" fontSize="sm">
+                  Position history will be available once you&apos;ve created lineups for games.
+                </Text>
+              </Flex>
+            </Box>
           </Box>
-        </Flex>
-        
-        <Flex 
-          direction="column" 
-          align="center" 
-          justify="center" 
-          py={8} 
-          bg="gray.50" 
-          borderRadius="md"
+        )
+      ) : (
+        <Box
+          bg="white"
+          borderWidth="1px"
+          borderColor="gray.200"
+          borderRadius="lg"
+          overflow="hidden"
+          shadow="sm"
+          mb={6}
         >
-          <Box color="gray.400" mb={3}>
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
+          <Flex 
+            px={{ base: 4, md: 6 }}
+            py={4}
+            alignItems="center"
+            justifyContent="space-between"
+            borderBottomWidth={1}
+            borderBottomColor="gray.200"
+          >
+            <Heading size="md">Position History</Heading>
+          </Flex>
+          <Box px={{ base: 4, md: 6 }} py={5}>
+            <Flex justify="center" align="center" py={8}>
+              <Text>Loading position data...</Text>
+            </Flex>
           </Box>
-          <Heading as="h3" size="sm" fontWeight="medium" mb={1}>
-            No position history yet
-          </Heading>
-          <Text color="gray.500" fontSize="sm">
-            Position history will be available once you&apos;ve created lineups for games.
-          </Text>
-        </Flex>
-      </Card>
+        </Box>
+      )}
       
       {/* Delete Confirmation Modal */}
+      {/* @ts-ignore - children prop is actually fulfilled by child elements */}
       <Modal isOpen={isOpen} onClose={onClose} isCentered>
         <ModalOverlay />
         <ModalContent>

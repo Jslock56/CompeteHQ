@@ -1,118 +1,76 @@
-"use client";
+'use client';
 
-import React, { useState } from 'react';
-import { v4 as uuidv4 } from 'uuid';
-import { storageService } from '../../services/storage/enhanced-storage';
-import { Team } from '../../types/team';
+import React from 'react';
+import {
+  Box,
+  Card as ChakraCard,
+  CardHeader,
+  CardBody,
+  Heading,
+  Text,
+  Flex
+} from '@chakra-ui/react';
+import { Card } from '../../components/common/card';
+import { PageContainer } from '../../components/layout/page-container';
 
-export default function TestPage() {
-  const [testResults, setTestResults] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
-
-  const runTests = () => {
-    const results: string[] = [];
-    setError(null);
-    
-    try {
-      // Test 1: Create team
-      const teamId = uuidv4();
-      const newTeam: Team = {
-        id: teamId,
-        name: "Test Team",
-        ageGroup: "10U",
-        season: "2023",
-        createdAt: Date.now(),
-        updatedAt: Date.now()
-      };
-      
-      const saveResult = storageService.team.saveTeam(newTeam);
-      results.push(`Team creation: ${saveResult ? "Success" : "Failed"}`);
-      
-      // Test 2: Get team
-      const retrievedTeam = storageService.team.getTeam(teamId);
-      results.push(`Team retrieval: ${retrievedTeam ? "Success" : "Failed"}`);
-      
-      // Test 3: Get all teams
-      const allTeams = storageService.team.getAllTeams();
-      results.push(`Get all teams: Found ${allTeams.length} teams`);
-      
-      // Test 4: Set current team
-      const currentResult = storageService.team.setCurrentTeamId(teamId);
-      results.push(`Set current team: ${currentResult ? "Success" : "Failed"}`);
-      
-      // Test 5: Get current team
-      const currentTeamId = storageService.team.getCurrentTeamId();
-      results.push(`Get current team: ${currentTeamId === teamId ? "Success" : "Failed"}`);
-      
-      // Test 6: Update team
-      if (retrievedTeam) {
-        const updatedTeam = {
-          ...retrievedTeam,
-          name: "Updated Team Name"
-        };
-        const updateResult = storageService.team.saveTeam(updatedTeam);
-        results.push(`Team update: ${updateResult ? "Success" : "Failed"}`);
-        
-        // Verify update
-        const afterUpdate = storageService.team.getTeam(teamId);
-        results.push(`Verify update: ${afterUpdate?.name === "Updated Team Name" ? "Success" : "Failed"}`);
-      }
-      
-      // Test 7: Delete team
-      const deleteResult = storageService.team.deleteTeam(teamId);
-      results.push(`Team deletion: ${deleteResult ? "Success" : "Failed"}`);
-      
-      // Verify deletion
-      const afterDelete = storageService.team.getTeam(teamId);
-      results.push(`Verify deletion: ${afterDelete === null ? "Success" : "Failed"}`);
-      
-      // Final verification
-      const finalTeams = storageService.team.getAllTeams();
-      results.push(`Final team count: ${finalTeams.length}`);
-      
-      setTestResults(results);
-    } catch (err) {
-      setError(`Test failed: ${String(err)}`);
-      setTestResults(results);
-    }
-  };
-
+// Test component to verify Card context issue
+export default function TestCardPage() {
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-4">Team Management Test Page</h1>
-      
-      <button 
-        onClick={runTests}
-        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+    <PageContainer title="Card Context Test">
+      {/* 1. Chakra's Card with CardHeader and CardBody - This works correctly */}
+      <ChakraCard mb={6}>
+        <CardHeader>
+          <Heading size="md">Chakra Card with CardHeader/CardBody</Heading>
+        </CardHeader>
+        <CardBody>
+          <Text>This should work correctly with no context errors.</Text>
+        </CardBody>
+      </ChakraCard>
+
+      {/* 2. Our custom Card from components/common/card */}
+      <Card mb={6} title="Custom Card">
+        <Text>This is using our custom Card component with direct children.</Text>
+      </Card>
+
+      {/* 3. Our custom Card with Chakra's CardHeader/CardBody - This would cause the context error */}
+      {/* 
+      <Card mb={6}>
+        <CardHeader>
+          <Heading size="md">Mixing Card Components - Error</Heading>
+        </CardHeader>
+        <CardBody>
+          <Text>This would cause a context error.</Text>
+        </CardBody>
+      </Card>
+      */}
+
+      {/* 4. Fixed version - using custom Box/Flex components like we did in the player page */}
+      <Box
+        bg="white"
+        borderWidth="1px"
+        borderColor="gray.200"
+        borderRadius="lg"
+        overflow="hidden"
+        shadow="sm"
+        mb={6}
       >
-        Run Storage Tests
-      </button>
-      
-      {error && (
-        <div className="mt-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-          {error}
-        </div>
-      )}
-      
-      {testResults.length > 0 && (
-        <div className="mt-6">
-          <h2 className="text-xl font-semibold mb-3">Test Results</h2>
-          <div className="border rounded overflow-hidden">
-            {testResults.map((result, index) => (
-              <div 
-                key={index}
-                className={`p-3 ${
-                  index % 2 === 0 ? 'bg-gray-50' : 'bg-white'
-                } ${
-                  result.includes("Failed") ? 'text-red-600' : ''
-                }`}
-              >
-                {index + 1}. {result}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
+        <Flex 
+          px={{ base: 4, md: 6 }}
+          py={4}
+          alignItems="center"
+          justifyContent="space-between"
+          borderBottomWidth={1}
+          borderBottomColor="gray.200"
+        >
+          <Heading size="md">Fixed Version</Heading>
+        </Flex>
+        <Box px={{ base: 4, md: 6 }} py={5}>
+          <Text>
+            This is the approach we used to fix the context error in the player page.
+            It uses basic Box and Flex components instead of CardHeader/CardBody.
+          </Text>
+        </Box>
+      </Box>
+    </PageContainer>
   );
 }

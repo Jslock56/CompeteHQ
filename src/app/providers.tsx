@@ -3,6 +3,7 @@
 import { CacheProvider } from '@chakra-ui/next-js';
 import { ChakraProvider, extendTheme } from '@chakra-ui/react';
 import { TeamProvider } from "../contexts/team-context";
+import { AuthProvider } from "../contexts/auth-context";
 
 // Your theme configuration
 const theme = extendTheme({
@@ -30,9 +31,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <CacheProvider>
       <ChakraProvider theme={theme} resetCSS>
-        <TeamProvider>
-          {children}
-        </TeamProvider>
+        <AuthProvider>
+          <TeamProvider>
+            {children}
+          </TeamProvider>
+        </AuthProvider>
       </ChakraProvider>
     </CacheProvider>
   );

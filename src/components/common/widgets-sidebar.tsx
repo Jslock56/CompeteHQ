@@ -14,6 +14,9 @@ import {
   SimpleGrid,
   useColorModeValue
 } from '@chakra-ui/react';
+import { useTeamContext } from '../../contexts/team-context';
+import { usePlayers } from '../../hooks/use-players';
+import { useGames } from '../../hooks/use-games';
 
 // Widget component interfaces
 interface WidgetProps {
@@ -22,85 +25,148 @@ interface WidgetProps {
   enabled: boolean;
 }
 
-// Sample widget components
-const PlayerStatsWidget: React.FC = () => (
-  <Box 
-    bg="white" 
-    p={4} 
-    rounded="lg" 
-    shadow="sm" 
-    borderWidth="1px" 
-    borderColor="gray.200" 
-    mb={4}
-  >
-    <Heading as="h3" size="sm" fontWeight="medium" color="gray.700" mb={2}>
-      Player Stats
-    </Heading>
-    <VStack spacing={2} align="stretch">
-      <Flex justify="space-between" alignItems="center">
-        <Text fontSize="xs" color="gray.500">Total Players</Text>
-        <Text fontSize="sm" fontWeight="semibold">14</Text>
-      </Flex>
-      <Flex justify="space-between" alignItems="center">
-        <Text fontSize="xs" color="gray.500">Active Players</Text>
-        <Text fontSize="sm" fontWeight="semibold">12</Text>
-      </Flex>
-    </VStack>
-  </Box>
-);
-
-const UpcomingGameWidget: React.FC = () => (
-  <Box 
-    bg="white" 
-    p={4} 
-    rounded="lg" 
-    shadow="sm" 
-    borderWidth="1px" 
-    borderColor="gray.200" 
-    mb={4}
-  >
-    <Heading as="h3" size="sm" fontWeight="medium" color="gray.700" mb={2}>
-      Next Game
-    </Heading>
-    <Box fontSize="xs">
-      <Text fontWeight="medium">vs. Eagles</Text>
-      <Text color="gray.500">Saturday, Mar 15 at 3:00 PM</Text>
-      <Text color="gray.500">Home Field</Text>
+// Widget components that use actual data
+const PlayerStatsWidget: React.FC = () => {
+  // Get players data from the team context
+  const { currentTeam } = useTeamContext();
+  const { players, isLoading } = usePlayers();
+  
+  const activePlayers = players.filter(player => player.active);
+  const totalPlayers = players.length;
+  
+  return (
+    <Box 
+      bg="white" 
+      p={4} 
+      rounded="lg" 
+      shadow="sm" 
+      borderWidth="1px" 
+      borderColor="gray.200" 
+      mb={4}
+    >
+      <Heading as="h3" size="sm" fontWeight="medium" color="gray.700" mb={2}>
+        Player Stats
+      </Heading>
+      {isLoading ? (
+        <Flex justify="center" py={3}>
+          <Text fontSize="xs" color="gray.500">Loading...</Text>
+        </Flex>
+      ) : (
+        <VStack spacing={2} align="stretch">
+          <Flex justify="space-between" alignItems="center">
+            <Text fontSize="xs" color="gray.500">Total Players</Text>
+            <Text fontSize="sm" fontWeight="semibold">{totalPlayers}</Text>
+          </Flex>
+          <Flex justify="space-between" alignItems="center">
+            <Text fontSize="xs" color="gray.500">Active Players</Text>
+            <Text fontSize="sm" fontWeight="semibold">{activePlayers.length}</Text>
+          </Flex>
+        </VStack>
+      )}
     </Box>
-  </Box>
-);
+  );
+};
 
-const FairPlayWidget: React.FC = () => (
-  <Box 
-    bg="white" 
-    p={4} 
-    rounded="lg" 
-    shadow="sm" 
-    borderWidth="1px" 
-    borderColor="gray.200" 
-    mb={4}
-  >
-    <Heading as="h3" size="sm" fontWeight="medium" color="gray.700" mb={2}>
-      Fair Play Metrics
-    </Heading>
-    <VStack spacing={2} align="stretch">
-      <Box>
-        <Flex justify="space-between" fontSize="xs">
-          <Text color="gray.500">Overall</Text>
-          <Text>85%</Text>
+const UpcomingGameWidget: React.FC = () => {
+  // Get games data from context
+  const { games, isLoading } = useGames();
+  
+  // Get the next upcoming game
+  const upcomingGames = games
+    .filter(game => game.date > Date.now())
+    .sort((a, b) => a.date - b.date);
+  
+  const nextGame = upcomingGames[0];
+  
+  return (
+    <Box 
+      bg="white" 
+      p={4} 
+      rounded="lg" 
+      shadow="sm" 
+      borderWidth="1px" 
+      borderColor="gray.200" 
+      mb={4}
+    >
+      <Heading as="h3" size="sm" fontWeight="medium" color="gray.700" mb={2}>
+        Next Game
+      </Heading>
+      {isLoading ? (
+        <Flex justify="center" py={3}>
+          <Text fontSize="xs" color="gray.500">Loading...</Text>
         </Flex>
-        <Progress value={85} size="xs" colorScheme="primary" rounded="full" mt={1} />
-      </Box>
-      <Box>
-        <Flex justify="space-between" fontSize="xs">
-          <Text color="gray.500">Playing Time</Text>
-          <Text>92%</Text>
-        </Flex>
-        <Progress value={92} size="xs" colorScheme="green" rounded="full" mt={1} />
-      </Box>
-    </VStack>
-  </Box>
-);
+      ) : nextGame ? (
+        <Box fontSize="xs">
+          <Text fontWeight="medium">vs. {nextGame.opponent}</Text>
+          <Text color="gray.500">
+            {new Date(nextGame.date).toLocaleDateString('en-US', { 
+              weekday: 'short', 
+              month: 'short', 
+              day: 'numeric' 
+            })} at {new Date(nextGame.date).toLocaleTimeString('en-US', { 
+              hour: 'numeric', 
+              minute: '2-digit' 
+            })}
+          </Text>
+          <Text color="gray.500">{nextGame.location}</Text>
+        </Box>
+      ) : (
+        <Text fontSize="xs" color="gray.500">No upcoming games</Text>
+      )}
+    </Box>
+  );
+};
+
+const FairPlayWidget: React.FC = () => {
+  // Get the current team
+  const { currentTeam } = useTeamContext();
+  const { players } = usePlayers();
+  const { games } = useGames();
+  
+  // This would ideally use real fair play metrics
+  // For now we'll just show placeholder metrics - in a real app, use positionHistoryStorage data
+  return (
+    <Box 
+      bg="white" 
+      p={4} 
+      rounded="lg" 
+      shadow="sm" 
+      borderWidth="1px" 
+      borderColor="gray.200" 
+      mb={4}
+    >
+      <Heading as="h3" size="sm" fontWeight="medium" color="gray.700" mb={2}>
+        Fair Play Metrics
+      </Heading>
+      {!currentTeam || players.length === 0 ? (
+        <Text fontSize="xs" color="gray.500">
+          Add players to see fair play metrics
+        </Text>
+      ) : games.length === 0 ? (
+        <Text fontSize="xs" color="gray.500">
+          Add games with lineups to see fair play metrics
+        </Text>
+      ) : (
+        <VStack spacing={2} align="stretch">
+          <Box>
+            <Flex justify="space-between" fontSize="xs">
+              <Text color="gray.500">Overall</Text>
+              <Text>85%</Text>
+            </Flex>
+            <Progress value={85} size="xs" colorScheme="primary" rounded="full" mt={1} />
+          </Box>
+          <Box>
+            <Flex justify="space-between" fontSize="xs">
+              <Text color="gray.500">Playing Time</Text>
+              <Text>92%</Text>
+            </Flex>
+            <Progress value={92} size="xs" colorScheme="green" rounded="full" mt={1} />
+          </Box>
+        </VStack>
+      )}
+    </Box>
+  );
+};
 
 const WidgetsSidebar: React.FC = () => {
   const [widgets, setWidgets] = useState<WidgetProps[]>([

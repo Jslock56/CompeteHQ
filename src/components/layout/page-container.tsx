@@ -62,9 +62,9 @@ export const PageContainer: React.FC<PageContainerProps> = ({
           {breadcrumbs.map((crumb, index) => (
             <BreadcrumbItem key={index} isCurrentPage={index === breadcrumbs.length - 1}>
               {crumb.href ? (
-                <NextLink href={crumb.href} passHref>
-                  <BreadcrumbLink>{crumb.label}</BreadcrumbLink>
-                </NextLink>
+                <BreadcrumbLink as={NextLink} href={crumb.href}>
+                  {crumb.label}
+                </BreadcrumbLink>
               ) : (
                 <Text>{crumb.label}</Text>
               )}

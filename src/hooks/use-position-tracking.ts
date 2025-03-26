@@ -33,23 +33,30 @@ export const usePlayerPositionTracking = (
   const gamesWithPositions = useMemo(() => {
     if (!playerId || !games.length) return [];
     
-    // First, check if we have stored position history
-    const storedHistory = positionHistoryStorage.getPositionHistory(playerId);
-    if (storedHistory && storedHistory.gamePositions.length > 0) {
-      // Convert stored history to GameWithPosition format
-      return storedHistory.gamePositions.map(gamePos => {
-        const game = games.find(g => g.id === gamePos.gameId);
-        return {
-          gameId: gamePos.gameId,
-          gameDate: gamePos.gameDate,
-          opponent: game?.opponent || 'Unknown',
-          startingPosition: gamePos.innings.length > 0 ? gamePos.innings[0].position : 'BN',
-          inningPositions: gamePos.innings
-        };
-      });
+    // Try to use the stored position history
+    try {
+      // First, check if we have stored position history
+      const storedHistory = positionHistoryStorage.getPositionHistory(playerId);
+      if (storedHistory && storedHistory.gamePositions && storedHistory.gamePositions.length > 0) {
+        console.log("Found stored position history for player:", playerId, storedHistory.gamePositions.length, "games");
+        // Convert stored history to GameWithPosition format
+        return storedHistory.gamePositions.map(gamePos => {
+          const game = games.find(g => g.id === gamePos.gameId);
+          return {
+            gameId: gamePos.gameId,
+            gameDate: gamePos.gameDate,
+            opponent: game?.opponent || 'Unknown',
+            startingPosition: gamePos.innings.length > 0 ? gamePos.innings[0].position : 'BN',
+            inningPositions: gamePos.innings
+          };
+        });
+      }
+    } catch (error) {
+      console.error("Error accessing stored position history:", error);
     }
     
-    // If no stored history, calculate from scratch
+    console.log("Calculating position history from scratch for player:", playerId);
+    // If no stored history or error, calculate from scratch
     return getGamesWithPositions(playerId, games, lineups);
   }, [playerId, games, lineups]);
   
@@ -127,32 +134,49 @@ export const useTeamPositionTracking = (
     // Only process active players
     const activePlayers = players.filter(p => p.active);
     
-    // First check if we have stored position histories
-    const storedHistories = positionHistoryStorage.getTeamPositionHistories(teamId);
-    const storedHistoriesByPlayer = Object.fromEntries(
-      storedHistories.map(history => [history.playerId, history])
-    );
-    
-    activePlayers.forEach(player => {
-      const storedHistory = storedHistoriesByPlayer[player.id];
-      
-      if (storedHistory && storedHistory.gamePositions.length > 0) {
-        // Convert stored history to GameWithPosition format
-        playerGames[player.id] = storedHistory.gamePositions.map(gamePos => {
-          const game = games.find(g => g.id === gamePos.gameId);
-          return {
-            gameId: gamePos.gameId,
-            gameDate: gamePos.gameDate,
-            opponent: game?.opponent || 'Unknown',
-            startingPosition: gamePos.innings.length > 0 ? gamePos.innings[0].position : 'BN',
-            inningPositions: gamePos.innings
-          };
+    // Try to use stored position histories
+    try {
+      const storedHistories = positionHistoryStorage.getTeamPositionHistories(teamId);
+      if (storedHistories && storedHistories.length > 0) {
+        console.log("Found stored team position histories:", storedHistories.length);
+        const storedHistoriesByPlayer = Object.fromEntries(
+          storedHistories.map(history => [history.playerId, history])
+        );
+        
+        activePlayers.forEach(player => {
+          const storedHistory = storedHistoriesByPlayer[player.id];
+          
+          if (storedHistory && storedHistory.gamePositions && storedHistory.gamePositions.length > 0) {
+            // Convert stored history to GameWithPosition format
+            playerGames[player.id] = storedHistory.gamePositions.map(gamePos => {
+              const game = games.find(g => g.id === gamePos.gameId);
+              return {
+                gameId: gamePos.gameId,
+                gameDate: gamePos.gameDate,
+                opponent: game?.opponent || 'Unknown',
+                startingPosition: gamePos.innings.length > 0 ? gamePos.innings[0].position : 'BN',
+                inningPositions: gamePos.innings
+              };
+            });
+          } else {
+            // Calculate from scratch if no stored history
+            playerGames[player.id] = getGamesWithPositions(player.id, games, lineups);
+          }
         });
       } else {
-        // Calculate from scratch if no stored history
-        playerGames[player.id] = getGamesWithPositions(player.id, games, lineups);
+        console.log("No stored team position histories, calculating from scratch");
+        // Calculate all from scratch
+        activePlayers.forEach(player => {
+          playerGames[player.id] = getGamesWithPositions(player.id, games, lineups);
+        });
       }
-    });
+    } catch (error) {
+      console.error("Error accessing team position histories:", error);
+      // Calculate all from scratch on error
+      activePlayers.forEach(player => {
+        playerGames[player.id] = getGamesWithPositions(player.id, games, lineups);
+      });
+    }
     
     setGamesWithPositionsByPlayer(playerGames);
     setIsLoading(false);

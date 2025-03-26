@@ -13,6 +13,7 @@ import {
   DrawerCloseButton,
 } from "@chakra-ui/react";
 import { HamburgerIcon } from '@chakra-ui/icons';
+import { useTeamContext } from "../../contexts/team-context";
 import Header from "../common/header";
 import Navigation from "../common/navigation";
 import WidgetsSidebar from "../common/widgets-sidebar";
@@ -22,17 +23,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const navSidebar = useDisclosure();
   const widgetSidebar = useDisclosure();
   
-  // Get current team from context or local state
-  const currentTeam = {
-    id: '1',
-    name: 'Wildcats',
-    ageGroup: '10U'
-  };
+  // Get current team from the team context
+  const { currentTeam, isLoading } = useTeamContext();
 
   return (
     <Flex direction="column" h="100vh">
       {/* Header */}
-      <Header currentTeam={currentTeam} />
+      <Header currentTeam={currentTeam} onOpenSidebar={navSidebar.onOpen} />
       
       {/* Main area with sidebars */}
       <Flex flex="1" overflow="hidden">
