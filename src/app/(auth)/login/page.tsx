@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import NextLink from 'next/link';
 import {
   Box,
@@ -18,17 +18,20 @@ import {
   useToast,
   Container,
   Divider,
+  Alert,
+  AlertIcon,
 } from '@chakra-ui/react';
+import { useAuth } from '../../../contexts/auth-context';
 
 /**
- * Login page component
- * 
- * This is a placeholder that will be integrated with MongoDB in the future.
- * For now, it provides a simple UI without actual authentication.
+ * Login page component integrated with MongoDB authentication
  */
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const toast = useToast();
+  const { login, isLoading: authLoading, error: authError } = useAuth();
+  
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -36,6 +39,22 @@ export default function LoginPage() {
     email: '',
     password: '',
   });
+
+  // Get the callback URL from search params
+  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
+
+  // Show auth errors as toast
+  useEffect(() => {
+    if (authError) {
+      toast({
+        title: 'Authentication Error',
+        description: authError,
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  }, [authError, toast]);
 
   // Basic validation
   const validateForm = () => {
@@ -76,10 +95,10 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      // This is a placeholder for actual authentication logic
-      // In the future, this would integrate with MongoDB/authentication service
-      setTimeout(() => {
-        // Simulate successful login
+      // Use the login function from auth context
+      const success = await login(email, password);
+      
+      if (success) {
         toast({
           title: 'Login successful',
           status: 'success',
@@ -87,9 +106,8 @@ export default function LoginPage() {
           isClosable: true,
         });
         
-        // Redirect to dashboard
-        router.push('/');
-      }, 1500);
+        // The context will handle the redirect based on user state
+      }
     } catch (error) {
       toast({
         title: 'Login failed',

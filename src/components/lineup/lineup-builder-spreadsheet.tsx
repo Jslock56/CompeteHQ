@@ -5,9 +5,9 @@ import { Game } from '../../types/game';
 import { Lineup, Position } from '../../types/lineup';
 import { Player } from '../../types/player';
 import { useLineup } from '../../hooks/use-lineup';
-import LineupGridSpreadsheet from './lineup-grid-spreadsheet';
-import RosterPanel from './roster-panel';
-import FairPlayChecker from './FairPlayChecker'; // Import the new component
+import LineupGridSpreadsheet from './components/lineup-grid-spreadsheet';
+import RosterPanel from './components/roster-panel';
+import FairPlayChecker from './components/FairPlayChecker'; // Import the new component
 
 interface LineupBuilderSpreadsheetProps {
   /**

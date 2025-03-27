@@ -4,6 +4,7 @@ import { CacheProvider } from '@chakra-ui/next-js';
 import { ChakraProvider, extendTheme } from '@chakra-ui/react';
 import { TeamProvider } from "../contexts/team-context";
 import { AuthProvider } from "../contexts/auth-context";
+import { StorageProvider } from "../contexts/storage-context";
 
 // Your theme configuration
 const theme = extendTheme({
@@ -31,11 +32,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <CacheProvider>
       <ChakraProvider theme={theme} resetCSS>
-        <AuthProvider>
-          <TeamProvider>
-            {children}
-          </TeamProvider>
-        </AuthProvider>
+        <StorageProvider>
+          <AuthProvider>
+            <TeamProvider>
+              {children}
+            </TeamProvider>
+          </AuthProvider>
+        </StorageProvider>
       </ChakraProvider>
     </CacheProvider>
   );
