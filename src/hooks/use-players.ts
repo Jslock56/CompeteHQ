@@ -81,7 +81,7 @@ export function usePlayers(): UsePlayersResult {
   /**
    * Load all players for the current team
    */
-  const loadPlayers = useCallback(() => {
+  const loadPlayers = useCallback(async () => {
     if (!currentTeam) {
       setPlayers([]);
       setIsLoading(false);
@@ -90,6 +90,30 @@ export function usePlayers(): UsePlayersResult {
     
     try {
       setIsLoading(true);
+      
+      // Try to load from API first
+      try {
+        const response = await fetch(`/api/teams/players?teamId=${currentTeam.id}`);
+        const data = await response.json();
+        
+        if (data.success && Array.isArray(data.players)) {
+          console.log('Loaded players from API:', data.players.length);
+          setPlayers(data.players);
+          setError(null);
+          
+          // Update local storage with the API data
+          data.players.forEach((player: Player) => {
+            storageService.player.savePlayer(player);
+          });
+          
+          setIsLoading(false);
+          return;
+        }
+      } catch (apiError) {
+        console.error('Failed to load players from API, falling back to local storage:', apiError);
+      }
+      
+      // Fall back to local storage
       const teamPlayers = storageService.player.getPlayersByTeam(currentTeam.id);
       setPlayers(teamPlayers);
       setError(null);
@@ -110,7 +134,7 @@ export function usePlayers(): UsePlayersResult {
   /**
    * Create a new player
    */
-  const createPlayer = useCallback((playerData: Omit<Player, 'id' | 'teamId' | 'createdAt' | 'updatedAt'>): Player => {
+  const createPlayer = useCallback(async (playerData: Omit<Player, 'id' | 'teamId' | 'createdAt' | 'updatedAt'>): Promise<Player> => {
     if (!currentTeam) {
       throw new Error('No team selected');
     }
@@ -125,60 +149,151 @@ export function usePlayers(): UsePlayersResult {
       updatedAt: now
     };
     
-    const success = storageService.player.savePlayer(newPlayer);
-    
-    if (!success) {
-      throw new Error('Failed to save player');
+    try {
+      // First save to local storage
+      const localSuccess = storageService.player.savePlayer(newPlayer);
+      
+      if (!localSuccess) {
+        throw new Error('Failed to save player to local storage');
+      }
+      
+      // Try saving to API/MongoDB
+      try {
+        const response = await fetch('/api/teams/players', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(newPlayer),
+        });
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+          console.error('API save failed but local save succeeded:', data.message);
+        } else {
+          console.log('Player saved to MongoDB successfully:', data.player);
+        }
+      } catch (apiError) {
+        // Log the error but don't fail the operation since local save succeeded
+        console.error('Failed to save player to API (will sync later):', apiError);
+      }
+      
+      // Refresh the players list
+      loadPlayers();
+      
+      return newPlayer;
+      
+    } catch (error) {
+      console.error('Player creation error:', error);
+      throw new Error('Failed to save player: ' + String(error));
     }
-    
-    // Refresh the players list
-    loadPlayers();
-    
-    return newPlayer;
   }, [currentTeam, loadPlayers]);
   
   /**
    * Update an existing player
    */
-  const updatePlayer = useCallback((player: Player): boolean => {
+  const updatePlayer = useCallback(async (player: Player): Promise<boolean> => {
     // Update the timestamp
     const updatedPlayer: Player = {
       ...player,
       updatedAt: Date.now()
     };
     
-    const success = storageService.player.savePlayer(updatedPlayer);
-    
-    if (success) {
-      // Update local state
+    try {
+      // First save to local storage
+      const localSuccess = storageService.player.savePlayer(updatedPlayer);
+      
+      if (!localSuccess) {
+        throw new Error('Failed to save player to local storage');
+      }
+      
+      // Update local state immediately
       setPlayers(prevPlayers => 
         prevPlayers.map(p => 
           p.id === player.id ? updatedPlayer : p
         )
       );
+      
+      // Try saving to API/MongoDB
+      try {
+        const response = await fetch('/api/teams/players', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updatedPlayer),
+        });
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+          console.error('API update failed but local update succeeded:', data.message);
+        } else {
+          console.log('Player updated in MongoDB successfully:', data.player);
+        }
+      } catch (apiError) {
+        // Log the error but don't fail the operation since local save succeeded
+        console.error('Failed to update player in API (will sync later):', apiError);
+      }
+      
+      return true;
+      
+    } catch (error) {
+      console.error('Player update error:', error);
+      return false;
     }
-    
-    return success;
   }, []);
   
   /**
    * Delete a player
    */
-  const deletePlayer = useCallback((playerId: string): boolean => {
-    const success = storageService.player.deletePlayer(playerId);
-    
-    if (success) {
-      // Update local state
-      setPlayers(prevPlayers => prevPlayers.filter(player => player.id !== playerId));
+  const deletePlayer = useCallback(async (playerId: string): Promise<boolean> => {
+    if (!currentTeam) {
+      throw new Error('No team selected');
     }
     
-    return success;
-  }, []);
+    try {
+      // First delete from localStorage
+      const localSuccess = storageService.player.deletePlayer(playerId);
+      
+      if (!localSuccess) {
+        throw new Error('Failed to delete player from local storage');
+      }
+      
+      // Update local state immediately
+      setPlayers(prevPlayers => prevPlayers.filter(player => player.id !== playerId));
+      
+      // Try deleting from API/MongoDB
+      try {
+        const response = await fetch(`/api/teams/players?playerId=${playerId}&teamId=${currentTeam.id}`, {
+          method: 'DELETE',
+        });
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+          console.error('API delete failed but local delete succeeded:', data.message);
+        } else {
+          console.log('Player deleted from MongoDB successfully');
+        }
+      } catch (apiError) {
+        // Log the error but don't fail the operation since local delete succeeded
+        console.error('Failed to delete player from API (will sync later):', apiError);
+      }
+      
+      return true;
+      
+    } catch (error) {
+      console.error('Player deletion error:', error);
+      return false;
+    }
+  }, [currentTeam]);
   
   /**
    * Toggle a player's active status
    */
-  const togglePlayerActive = useCallback((playerId: string): boolean => {
+  const togglePlayerActive = useCallback(async (playerId: string): Promise<boolean> => {
     const player = players.find(p => p.id === playerId);
     
     if (!player) {
@@ -191,7 +306,7 @@ export function usePlayers(): UsePlayersResult {
       updatedAt: Date.now()
     };
     
-    return updatePlayer(updatedPlayer);
+    return await updatePlayer(updatedPlayer);
   }, [players, updatePlayer]);
   
   /**
@@ -209,7 +324,11 @@ export function usePlayers(): UsePlayersResult {
   
   // Load players on initial mount and when current team changes
   useEffect(() => {
-    loadPlayers();
+    const fetchPlayers = async () => {
+      await loadPlayers();
+    };
+    
+    fetchPlayers();
   }, [loadPlayers]);
   
   return {

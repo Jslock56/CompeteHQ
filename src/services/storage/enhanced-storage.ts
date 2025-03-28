@@ -523,7 +523,7 @@ export const settingsStorage = {
     return {
       currentTeamId: undefined,
       theme: 'light',
-      preferOffline: true
+      preferOffline: false // Default to online mode to ensure MongoDB syncing
     };
   },
 

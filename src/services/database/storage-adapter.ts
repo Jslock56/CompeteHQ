@@ -93,7 +93,10 @@ class StorageAdapter implements StorageInterface {
     
     // Check settings for preferred mode
     const settings = await this.getSettings();
-    if (settings?.preferOffline) return true;
+    if (settings?.preferOffline) {
+      // For debugging: instead of forcing offline mode, log a message but try to use MongoDB
+      console.log('preferOffline is set, but trying MongoDB connection anyway for player data');
+    }
     
     // Try MongoDB connection
     return !mongoDBService.isConnectedToDatabase();
