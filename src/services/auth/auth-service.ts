@@ -8,6 +8,7 @@ import { User, IUser, PERMISSION_SETS, Permission } from '../../models/user';
 import { Team, ITeam } from '../../models/team';
 import { TeamMembership, ITeamMembership } from '../../models/team-membership';
 import { Invitation, IInvitation } from '../../models/invitation';
+import { TeamCode } from '../../models/team-code';
 
 // Constants
 const JWT_SECRET = process.env.JWT_SECRET || 'a-very-secure-jwt-secret-key-that-should-be-in-env';
@@ -339,6 +340,19 @@ class AuthService {
       // Update user's teams
       user.addTeam(team.id);
       await user.save();
+      
+      // Import the teamService to generate a team code
+      const { teamService } = await import('./team-service');
+      
+      // Generate an initial team code (48 hour expiration by default)
+      // We bypass permission checks since this is part of team creation
+      try {
+        await this.generateInitialTeamCode(team.id, userId);
+        console.log(`Generated initial team code for team ${team.id}`);
+      } catch (codeError) {
+        console.error('Failed to generate initial team code:', codeError);
+        // Don't fail the whole team creation if code generation fails
+      }
 
       return {
         success: true,
@@ -550,6 +564,59 @@ class AuthService {
    */
   async getUserById(userId: string): Promise<IUser | null> {
     return User.findById(userId);
+  }
+  
+  /**
+   * Generate an initial team code for a newly created team
+   * This bypasses the normal permission checks since it's part of team creation
+   */
+  private async generateInitialTeamCode(
+    teamId: string, 
+    userId: string, 
+    expiresInHours: number = 48
+  ): Promise<string | null> {
+    try {
+      // Generate a 6-character alphanumeric code
+      const generateCode = () => {
+        return Math.random().toString(36).substring(2, 8).toUpperCase();
+      };
+      
+      // Make sure code is unique
+      let code = generateCode();
+      let existingCode = await TeamCode.findOne({ code });
+      
+      // Try a few times if there's a collision
+      for (let i = 0; i < 5 && existingCode; i++) {
+        code = generateCode();
+        existingCode = await TeamCode.findOne({ code });
+      }
+      
+      if (existingCode) {
+        // Very unlikely, but handle it
+        throw new Error('Failed to generate a unique team code');
+      }
+      
+      // Calculate expiration time
+      const expiresAt = Date.now() + (expiresInHours * 60 * 60 * 1000);
+      
+      // Create team code
+      const teamCode = new TeamCode({
+        teamId,
+        code,
+        createdAt: Date.now(),
+        expiresAt,
+        maxUses: undefined, // No usage limit
+        uses: 0,
+        createdBy: userId,
+        isActive: true
+      });
+      
+      await teamCode.save();
+      return code;
+    } catch (error) {
+      console.error('Error generating initial team code:', error);
+      return null;
+    }
   }
 }
 
