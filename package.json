@@ -14,7 +14,10 @@
     "docker:dev": "docker-compose up",
     "docker:build": "docker-compose build",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
-    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\""
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\"",
+    "test:api": "node scripts/test-api.js",
+    "test:db": "node scripts/validate-mongodb.js",
+    "test:e2e": "echo \"Running e2e tests\" && npm run test:api && npm run test:db"
   },
   "dependencies": {
     "@chakra-ui/icons": "^2.2.4",
