@@ -85,7 +85,10 @@ notificationSchema.methods.isExpired = function(): boolean {
 };
 
 // Define the model
-export const Notification: Model<INotification> = models.Notification || 
-  model<INotification>('Notification', notificationSchema);
+// When using this model in the browser, the models object can be undefined
+// Check that models exists before trying to access it
+export const Notification: Model<INotification> = (typeof models !== 'undefined' && models.Notification) 
+  ? models.Notification 
+  : model<INotification>('Notification', notificationSchema);
 
 export default Notification;

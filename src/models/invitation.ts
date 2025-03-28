@@ -86,7 +86,10 @@ invitationSchema.methods.isValid = function(): boolean {
 };
 
 // Define the model
-export const Invitation: Model<IInvitation> = models.Invitation || 
-  model<IInvitation>('Invitation', invitationSchema);
+// When using this model in the browser, the models object can be undefined
+// Check that models exists before trying to access it
+export const Invitation: Model<IInvitation> = (typeof models !== 'undefined' && models.Invitation) 
+  ? models.Invitation 
+  : model<IInvitation>('Invitation', invitationSchema);
 
 export default Invitation;

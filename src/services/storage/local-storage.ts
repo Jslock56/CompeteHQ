@@ -23,6 +23,12 @@ export const STORAGE_KEYS = {
     }
   
     private checkAvailability(): boolean {
+      // Check if window is defined (client-side)
+      if (typeof window === 'undefined') {
+        return false;
+      }
+      
+      // Check if localStorage is available
       const testKey = '__test__';
       try {
         localStorage.setItem(testKey, testKey);

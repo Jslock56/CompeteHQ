@@ -5,15 +5,18 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // Routes that don't require authentication
 const publicRoutes = [
+  '/',  // Public landing page
   '/login',
   '/signup',
+  '/select-role',  // Role selection page
+  '/teams/join',   // Join team page
+  '/teams/new',    // Create team page
   '/reset-password',
   '/verify-email',
   '/api/auth/login',
   '/api/auth/register',
   '/api/auth/reset-password',
-  '/api/auth/verify-email',
-  '/'  // Landing page
+  '/api/auth/verify-email'
 ];
 
 // API routes that don't require authentication
@@ -21,7 +24,11 @@ const publicApiRoutes = [
   '/api/auth/login',
   '/api/auth/register',
   '/api/auth/reset-password',
-  '/api/auth/verify-email'
+  '/api/auth/verify-email',
+  '/api/auth/me', // Needed for checking auth status
+  '/api/teams', // Needed for team creation
+  '/api/teams/join', // Needed for team joining
+  '/api/teams/join-request' // Needed for join requests
 ];
 
 export async function middleware(request: NextRequest) {
@@ -45,8 +52,13 @@ export async function middleware(request: NextRequest) {
   const isPublicRoute = publicRoutes.some(route => 
     pathname === route || pathname.startsWith(`${route}/`)
   );
+
+  // Check if it's a public API route
+  const isPublicApiRoute = publicApiRoutes.some(route =>
+    pathname === route || pathname.startsWith(`${route}/`)
+  );
   
-  if (isPublicRoute) {
+  if (isPublicRoute || isPublicApiRoute) {
     return NextResponse.next();
   }
   

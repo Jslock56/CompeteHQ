@@ -5,6 +5,7 @@
  * This is crucial for the offline-first experience, allowing users to work
  * offline and later sync their changes when they go back online.
  */
+'use server'; // Mark this module as server-only
 
 import { storageAdapter } from './storage-adapter';
 import { localStorageService } from '../storage/enhanced-storage';

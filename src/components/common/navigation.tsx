@@ -33,7 +33,7 @@ const Navigation: React.FC<NavigationProps> = ({ currentTeam }) => {
   const navigationItems: NavItem[] = [
     {
       name: 'Dashboard',
-      href: '/',
+      href: '/dashboard',
       icon: <Icon as={FiHome} boxSize={4} />,
     },
     {

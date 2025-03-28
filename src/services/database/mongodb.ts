@@ -2,6 +2,7 @@
  * MongoDB database service
  * Handles connection and CRUD operations for all entities
  */
+// Remove 'use server' as it's causing compatibility issues
 import { MongoClient, ServerApiVersion, Db, Collection } from 'mongodb';
 import { Team } from '../../types/team';
 import { Player } from '../../types/player';
@@ -13,6 +14,46 @@ import { PositionHistory } from '../../types/position-history';
 // Environment variables
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DB_NAME = 'competehq';
+
+// Mongoose global connection
+import mongoose from 'mongoose';
+
+// Global connection status
+let isConnected = false;
+
+/**
+ * Create a singleton Mongoose connection to be shared across all API routes
+ */
+export async function connectMongoDB() {
+  if (isConnected) {
+    console.log('=> Using existing MongoDB connection');
+    return;
+  }
+
+  try {
+    if (!MONGODB_URI) {
+      throw new Error('MONGODB_URI is not defined in environment variables');
+    }
+
+    console.log('=> Connecting to MongoDB...');
+    
+    // Mongoose connection options
+    const options = {
+      serverSelectionTimeoutMS: 5000,  // 5 seconds
+      socketTimeoutMS: 30000,  // 30 seconds
+      connectTimeoutMS: 10000,  // 10 seconds
+    };
+
+    // Connect to MongoDB
+    await mongoose.connect(MONGODB_URI, options);
+    
+    isConnected = true;
+    console.log('=> MongoDB connected successfully');
+  } catch (error) {
+    console.error('MongoDB connection error:', error);
+    throw new Error('Failed to connect to MongoDB');
+  }
+}
 
 // Collections
 const COLLECTIONS = {
@@ -78,13 +119,19 @@ class MongoDBService {
         throw new Error('MongoDB URI is not defined in environment variables');
       }
 
-      // Create MongoDB client
+      console.log('Connecting to MongoDB...');
+
+      // Create MongoDB client with improved options
       this.client = new MongoClient(MONGODB_URI, {
         serverApi: {
           version: ServerApiVersion.v1,
           strict: true,
           deprecationErrors: true,
-        }
+        },
+        connectTimeoutMS: 5000,  // 5 seconds
+        socketTimeoutMS: 30000,  // 30 seconds
+        serverSelectionTimeoutMS: 5000,  // 5 seconds
+        maxPoolSize: 10
       });
 
       // Connect to the MongoDB server
@@ -105,11 +152,12 @@ class MongoDBService {
       await this.createIndexes();
 
       this.isConnected = true;
-      console.log('Connected to MongoDB');
+      console.log('Connected to MongoDB successfully');
       return true;
     } catch (error) {
       this.connectionError = error as Error;
       console.error('Failed to connect to MongoDB:', error);
+      console.error('Please check your MONGODB_URI in the .env file and ensure Atlas network access is configured correctly.');
       return false;
     } finally {
       this.isConnecting = false;

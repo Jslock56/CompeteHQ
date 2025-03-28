@@ -74,6 +74,10 @@ export interface IUser {
   verificationToken?: string;
   resetPasswordToken?: string;
   resetPasswordExpires?: number;
+  // Mongoose Document instance methods
+  hasTeam: (teamId: string) => boolean;
+  addTeam: (teamId: string) => void;
+  removeTeam: (teamId: string) => void;
 }
 
 const userSchema = new Schema<IUser>({
@@ -145,11 +149,8 @@ userSchema.virtual('fullName').get(function() {
   return this.name;
 });
 
-// Add indexes
-userSchema.index({ email: 1 }, { unique: true });
+// Add indexes (when not already defined in schema)
 userSchema.index({ teams: 1 });
-userSchema.index({ verificationToken: 1 });
-userSchema.index({ resetPasswordToken: 1 });
 
 // Helper methods
 userSchema.methods.hasTeam = function(teamId: string): boolean {
@@ -179,6 +180,10 @@ userSchema.methods.removeTeam = function(teamId: string): void {
 };
 
 // Define the model
-export const User: Model<IUser> = models.User || model<IUser>('User', userSchema);
+// When using this model in the browser, the models object can be undefined
+// Check that models exists before trying to access it
+export const User: Model<IUser> = (typeof models !== 'undefined' && models.User) 
+  ? models.User 
+  : model<IUser>('User', userSchema);
 
 export default User;

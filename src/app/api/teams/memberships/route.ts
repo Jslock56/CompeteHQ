@@ -7,9 +7,16 @@ import { TeamMembership } from '../../../../models/team-membership';
 import { Team } from '../../../../models/team';
 import { cookies } from 'next/headers';
 
+// Import MongoDB connection manager
+import { connectMongoDB } from '../../../../services/database/mongodb';
+
 export async function GET(request: NextRequest) {
   try {
-    const authToken = cookies().get('auth_token')?.value;
+    // Ensure MongoDB is connected
+    await connectMongoDB();
+    
+    const cookieStore = await cookies();
+    const authToken = cookieStore.get('auth_token')?.value;
     
     if (!authToken) {
       return NextResponse.json({
@@ -29,14 +36,19 @@ export async function GET(request: NextRequest) {
     
     const userId = tokenVerification.userId;
     
+    console.log("Getting memberships for user", userId);
+    
     // Get all memberships
     const memberships = await TeamMembership.find({ userId });
+    console.log("Found memberships:", memberships);
     
     // Get team IDs
     const teamIds = memberships.map(membership => membership.teamId);
+    console.log("Team IDs from memberships:", teamIds);
     
     // Get team data
     const teams = await Team.find({ id: { $in: teamIds } });
+    console.log("Teams found:", teams);
     
     // Format response
     const teamsData = teams.map(team => ({
@@ -46,6 +58,7 @@ export async function GET(request: NextRequest) {
       season: team.season,
       sport: team.sport
     }));
+    console.log("Formatted team data:", teamsData);
     
     return NextResponse.json({
       success: true,

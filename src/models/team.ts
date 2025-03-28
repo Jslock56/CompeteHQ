@@ -89,7 +89,10 @@ teamSchema.methods.getFullName = function(): string {
 };
 
 // Define the model
-export const Team: Model<ITeam> = models.Team || 
-  model<ITeam>('Team', teamSchema);
+// When using this model in the browser, the models object can be undefined
+// Check that models exists before trying to access it
+export const Team: Model<ITeam> = (typeof models !== 'undefined' && models.Team) 
+  ? models.Team 
+  : model<ITeam>('Team', teamSchema);
 
 export default Team;

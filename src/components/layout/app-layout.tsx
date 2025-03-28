@@ -1,6 +1,7 @@
 'use client';
 
 import { ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { 
   Box, 
   Flex, 
@@ -14,6 +15,7 @@ import {
 } from "@chakra-ui/react";
 import { HamburgerIcon } from '@chakra-ui/icons';
 import { useTeamContext } from "../../contexts/team-context";
+import { useAuth } from "../../contexts/auth-context";
 import Header from "../common/header";
 import Navigation from "../common/navigation";
 import WidgetsSidebar from "../common/widgets-sidebar";
@@ -25,7 +27,33 @@ export function AppLayout({ children }: { children: ReactNode }) {
   
   // Get current team from the team context
   const { currentTeam, isLoading } = useTeamContext();
+  
+  // Get auth context and pathname
+  const { isAuthenticated } = useAuth();
+  const pathname = usePathname();
+  
+  // Check if this is a public page or part of the setup process
+  const isPublicPage = [
+    '/',
+    '/login',
+    '/signup',
+    '/reset-password',
+    '/verify-email',
+    '/select-role',
+    '/teams/join',
+    '/teams/new'
+  ].includes(pathname) || pathname.startsWith('/teams/new');
 
+  // For public pages, render without the app shell
+  if (isPublicPage) {
+    return (
+      <Box minH="100vh">
+        {children}
+      </Box>
+    );
+  }
+
+  // For authenticated pages, render with the app shell
   return (
     <Flex direction="column" h="100vh">
       {/* Header */}

@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import NextLink from 'next/link';
 import {
   Box,
@@ -19,21 +19,30 @@ import {
   Container,
   Divider,
   HStack,
+  Alert,
+  AlertIcon,
+  AlertTitle,
+  AlertDescription,
 } from '@chakra-ui/react';
+import { useAuth } from '../../../contexts/auth-context';
 
 /**
- * Signup page component
- * 
- * This is a placeholder that will be integrated with MongoDB in the future.
- * For now, it provides a simple UI without actual user creation.
+ * Signup page component integrated with MongoDB authentication
  */
 export default function SignupPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const toast = useToast();
+  const { register, isLoading: authLoading, error: authError } = useAuth();
+  
+  // Get the invitation token if it exists
+  const invitationToken = searchParams.get('token');
+  
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
+    name: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -42,18 +51,45 @@ export default function SignupPage() {
   const [errors, setErrors] = useState({
     firstName: '',
     lastName: '',
+    name: '',
     email: '',
     password: '',
     confirmPassword: '',
   });
 
+  // Show auth errors as toast
+  useEffect(() => {
+    if (authError) {
+      toast({
+        title: 'Registration Error',
+        description: authError,
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  }, [authError, toast]);
+
   // Handle input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
+    
+    // Update full name when first or last name changes
+    if (name === 'firstName' || name === 'lastName') {
+      const firstName = name === 'firstName' ? value : formData.firstName;
+      const lastName = name === 'lastName' ? value : formData.lastName;
+      
+      setFormData({
+        ...formData,
+        [name]: value,
+        name: `${firstName} ${lastName}`.trim()
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value,
+      });
+    }
   };
 
   // Basic validation
@@ -61,6 +97,7 @@ export default function SignupPage() {
     const newErrors = {
       firstName: '',
       lastName: '',
+      name: '',
       email: '',
       password: '',
       confirmPassword: '',
@@ -88,8 +125,8 @@ export default function SignupPage() {
     if (!formData.password) {
       newErrors.password = 'Password is required';
       isValid = false;
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters';
       isValid = false;
     }
 
@@ -113,10 +150,15 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
-      // This is a placeholder for actual user creation logic
-      // In the future, this would integrate with MongoDB/authentication service
-      setTimeout(() => {
-        // Simulate successful signup
+      // Use the auth context register function
+      const success = await register(
+        formData.name, 
+        formData.email, 
+        formData.password,
+        invitationToken || undefined
+      );
+      
+      if (success) {
         toast({
           title: 'Account created successfully',
           description: "You're now signed in",
@@ -125,9 +167,8 @@ export default function SignupPage() {
           isClosable: true,
         });
         
-        // Redirect to team creation
-        router.push('/teams/new');
-      }, 1500);
+        // The auth context will handle redirects based on invitation status
+      }
     } catch (error) {
       toast({
         title: 'Sign up failed',
@@ -151,12 +192,37 @@ export default function SignupPage() {
             lineHeight="shorter"
             textAlign="center"
           >
-            Create Your Account
+            {invitationToken ? 'Accept Team Invitation' : 'Create Your Account'}
           </Heading>
           <Text color="gray.500" textAlign="center" maxW="md">
-            Sign up to start managing your baseball teams
+            {invitationToken 
+              ? 'Complete your registration to join the team' 
+              : 'Sign up to start managing your baseball teams'}
           </Text>
         </Stack>
+        
+        {/* Show invitation banner if token present */}
+        {invitationToken && (
+          <Alert
+            status="info"
+            variant="solid"
+            borderRadius="md"
+            flexDirection="column"
+            alignItems="center"
+            justifyContent="center"
+            textAlign="center"
+            py={4}
+          >
+            <AlertIcon boxSize="40px" mr={0} mb={2} />
+            <AlertTitle mt={2} mb={2} fontSize="lg">
+              You've Been Invited!
+            </AlertTitle>
+            <AlertDescription maxWidth="sm">
+              You're signing up with a team invitation. Once you complete registration, 
+              you'll be able to access the team immediately.
+            </AlertDescription>
+          </Alert>
+        )}
         
         <Box
           py={8}
@@ -173,6 +239,7 @@ export default function SignupPage() {
                   name="firstName"
                   value={formData.firstName}
                   onChange={handleChange}
+                  autoFocus
                 />
                 <FormErrorMessage>{errors.firstName}</FormErrorMessage>
               </FormControl>
@@ -210,6 +277,9 @@ export default function SignupPage() {
                 placeholder="••••••••"
               />
               <FormErrorMessage>{errors.password}</FormErrorMessage>
+              <Text fontSize="xs" color="gray.500" mt={1}>
+                Must be at least 8 characters
+              </Text>
             </FormControl>
             
             <FormControl id="confirmPassword" isInvalid={!!errors.confirmPassword}>
@@ -224,20 +294,20 @@ export default function SignupPage() {
               <FormErrorMessage>{errors.confirmPassword}</FormErrorMessage>
             </FormControl>
             
-            <Stack spacing={4} pt={2}>
+            <Stack spacing={4} pt={4}>
               <Button
                 type="submit"
                 colorScheme="primary"
                 size="lg"
                 fontSize="md"
-                isLoading={isLoading}
+                isLoading={isLoading || authLoading}
               >
-                Sign up
+                {invitationToken ? 'Sign up & Join Team' : 'Sign up'}
               </Button>
               
               <Text align="center">
                 Already have an account?{' '}
-                <NextLink href="/login" passHref>
+                <NextLink href={invitationToken ? `/login?token=${invitationToken}` : "/login"} passHref>
                   <Link color="primary.500">Log in</Link>
                 </NextLink>
               </Text>

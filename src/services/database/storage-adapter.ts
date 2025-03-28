@@ -5,6 +5,7 @@
  * intelligently switching between MongoDB (online) and LocalStorage (offline)
  * based on network availability and configuration.
  */
+'use server'; // Mark this module as server-only
 
 import { Team } from '../../types/team';
 import { Player } from '../../types/player';

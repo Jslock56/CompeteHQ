@@ -83,7 +83,10 @@ teamCodeSchema.methods.incrementUses = function(): void {
 };
 
 // Define the model
-export const TeamCode: Model<ITeamCode> = models.TeamCode || 
-  model<ITeamCode>('TeamCode', teamCodeSchema);
+// When using this model in the browser, the models object can be undefined
+// Check that models exists before trying to access it
+export const TeamCode: Model<ITeamCode> = (typeof models !== 'undefined' && models.TeamCode) 
+  ? models.TeamCode 
+  : model<ITeamCode>('TeamCode', teamCodeSchema);
 
 export default TeamCode;

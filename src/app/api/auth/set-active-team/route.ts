@@ -6,9 +6,16 @@ import { User } from '../../../../models/user';
 import { authService } from '../../../../services/auth/auth-service';
 import { cookies } from 'next/headers';
 
+// Import MongoDB connection manager
+import { connectMongoDB } from '../../../../services/database/mongodb';
+
 export async function POST(request: NextRequest) {
   try {
-    const authToken = cookies().get('auth_token')?.value;
+    // Ensure MongoDB is connected
+    await connectMongoDB();
+    
+    const cookieStore = await cookies();
+    const authToken = cookieStore.get('auth_token')?.value;
     
     if (!authToken) {
       return NextResponse.json({

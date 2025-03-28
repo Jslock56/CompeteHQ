@@ -75,7 +75,10 @@ teamMembershipSchema.methods.hasAllPermissions = function(permissions: Permissio
 };
 
 // Define the model
-export const TeamMembership: Model<ITeamMembership> = models.TeamMembership || 
-  model<ITeamMembership>('TeamMembership', teamMembershipSchema);
+// When using this model in the browser, the models object can be undefined
+// Check that models exists before trying to access it
+export const TeamMembership: Model<ITeamMembership> = (typeof models !== 'undefined' && models.TeamMembership) 
+  ? models.TeamMembership 
+  : model<ITeamMembership>('TeamMembership', teamMembershipSchema);
 
 export default TeamMembership;

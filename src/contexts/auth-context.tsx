@@ -93,11 +93,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
           const data = await response.json();
           
           if (data.success && data.user) {
+            console.log('Auth check successful, user data:', data.user);
             setUser(data.user);
             
             // If there's an active team, load team memberships
             if (data.user.activeTeamId) {
+              console.log('User has activeTeamId:', data.user.activeTeamId);
               loadTeamMemberships(data.user);
+            } else if (data.user.teams && data.user.teams.length > 0) {
+              console.log('User has teams but no active team:', data.user.teams);
+              // Auto-set the first team if they have teams but no active
+              const firstTeam = data.user.teams[0];
+              changeActiveTeam(firstTeam);
             }
           } else {
             setUser(null);
@@ -121,16 +128,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
   
   // Load team memberships and set active team when user or activeTeamId changes
   const loadTeamMemberships = async (currentUser: User) => {
-    if (!currentUser || !currentUser.activeTeamId) {
+    if (!currentUser) {
       setActiveTeam(null);
       return;
     }
     
     try {
+      console.log('Loading team memberships for user:', currentUser.id);
       const response = await fetch('/api/teams/memberships');
       
       if (response.ok) {
         const data = await response.json();
+        console.log('Team memberships API response:', data);
         
         if (data.success && data.memberships) {
           // Convert array to record for easier lookup
@@ -142,11 +151,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
           
           setTeamMemberships(membershipsRecord);
           
-          // Set active team info
+          // Set active team info if the user has an active team
           if (currentUser.activeTeamId && membershipsRecord[currentUser.activeTeamId]) {
             const activeTeamData = data.teams.find((t: any) => t.id === currentUser.activeTeamId);
             
             if (activeTeamData) {
+              console.log('Setting active team:', activeTeamData.id);
               setActiveTeam({
                 id: activeTeamData.id,
                 name: activeTeamData.name,
@@ -154,8 +164,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 permissions: membershipsRecord[currentUser.activeTeamId].permissions
               });
             }
+          } else if (data.teams && data.teams.length > 0 && !currentUser.activeTeamId) {
+            // If user has teams but no active team set, suggest the first team
+            console.log('No active team, but user has teams. First team:', data.teams[0].id);
           }
         }
+      } else {
+        console.error('Error fetching team memberships:', await response.text());
       }
     } catch (error) {
       console.error('Error loading team memberships:', error);
@@ -166,6 +181,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     setError(null);
+    console.log(`Auth context: Login attempt for ${email}`);
 
     try {
       const response = await fetch('/api/auth/login', {
@@ -176,25 +192,59 @@ export function AuthProvider({ children }: AuthProviderProps) {
         body: JSON.stringify({ email, password }),
       });
       
+      console.log(`Auth context: Login response status: ${response.status}`);
       const data = await response.json();
+      console.log(`Auth context: Login response data:`, data);
       
       if (response.ok && data.success) {
+        console.log(`Auth context: Login successful for ${email}`);
         // Set user from response
         setUser(data.user);
         
-        // If user has teams, load memberships
-        if (data.user.teams?.length > 0) {
-          loadTeamMemberships(data.user);
+        // Store token in localStorage for API calls
+        if (data.token && typeof window !== 'undefined') {
+          localStorage.setItem('authToken', data.token);
         }
         
-        // Navigate to dashboard or team selection
+        // If user has teams, load memberships
+        if (data.user.teams?.length > 0) {
+          await loadTeamMemberships(data.user);
+        }
+        
+        // Debug: log current state
+        console.log("Login success, user data:", data.user);
+        console.log("User teams:", data.user.teams);
+        console.log("Active team ID:", data.user.activeTeamId);
+        
+        // Override normal flow - force redirect to teams/new for debugging
+        console.log("DEBUG: Forcing redirect to dashboard");
+        router.push('/dashboard');
+        
+        /* Commenting out normal flow for debugging
+        // Navigate to dashboard if they have an active team
         if (data.user.activeTeamId) {
+          console.log("User has active team, redirecting to dashboard");
           router.push('/dashboard');
-        } else if (data.user.teams?.length > 0) {
-          router.push('/teams/select');
-        } else {
+        } 
+        // If they have teams but no active team, go to team selection or set the first team
+        else if (data.user.teams?.length > 0) {
+          // If they have at least one team but no active team, set the first team as active
+          if (data.user.teams.length === 1) {
+            console.log("User has one team, setting as active");
+            // Set the first team as active
+            await changeActiveTeam(data.user.teams[0]);
+            router.push('/dashboard');
+          } else {
+            console.log("User has multiple teams, redirecting to team selection");
+            router.push('/teams/select');
+          }
+        } 
+        // If they have no teams, go to team creation
+        else {
+          console.log("User has no teams, redirecting to team creation");
           router.push('/teams/new');
         }
+        */
         
         return true;
       } else {
@@ -237,16 +287,26 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const data = await response.json();
       
       if (response.ok && data.success) {
+        console.log('Registration successful:', data);
+        
         // Set user from response
         setUser(data.user);
         
+        // Store token in localStorage for API calls
+        if (data.token && typeof window !== 'undefined') {
+          localStorage.setItem('authToken', data.token);
+        }
+        
         // If invited to a team, active team will be set
         if (data.user.activeTeamId) {
-          loadTeamMemberships(data.user);
+          await loadTeamMemberships(data.user);
           router.push('/dashboard');
         } else {
-          // New user without a team yet
-          router.push('/teams/new');
+          // New user without a team - redirect to role selection
+          console.log('Redirecting to role selection page');
+          setTimeout(() => {
+            router.push('/select-role');
+          }, 500);
         }
         
         return true;

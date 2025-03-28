@@ -127,23 +127,31 @@ class AuthService {
    */
   async login(email: string, password: string): Promise<AuthResult> {
     try {
+      console.log(`Auth service: Attempting login for user ${email}`);
+      
       // Find the user
       const user = await User.findOne({ email });
       if (!user) {
+        console.log(`Auth service: User not found for email ${email}`);
         return {
           success: false,
           message: 'Invalid email or password'
         };
       }
+      
+      console.log(`Auth service: User found: ${user.id}`);
 
       // Check password
       const isPasswordValid = await compare(password, user.passwordHash);
       if (!isPasswordValid) {
+        console.log(`Auth service: Invalid password for user ${email}`);
         return {
           success: false,
           message: 'Invalid email or password'
         };
       }
+      
+      console.log(`Auth service: Password valid for user ${email}`);
 
       // Update last login
       user.lastLogin = Date.now();
@@ -524,6 +532,17 @@ class AuthService {
         valid: false
       };
     }
+  }
+  
+  /**
+   * Create a temporary token for system operations
+   */
+  createTemporaryToken(userId: string): string {
+    return sign(
+      { userId, email: 'system@competehq.com', isSystemToken: true },
+      JWT_SECRET,
+      { expiresIn: '1h' }
+    );
   }
 
   /**

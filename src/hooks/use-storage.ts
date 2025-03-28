@@ -3,9 +3,36 @@
  * This hook provides a unified interface for all storage operations
  */
 
+"use client";
+
 import { useState, useEffect, useCallback } from 'react';
-import { storageAdapter } from '../services/database/storage-adapter';
-import { syncService } from '../services/database/sync-service';
+import { storageService } from '../services/storage/enhanced-storage';
+
+// Stub for the server-side storageAdapter
+// This provides client-side type compatibility without importing server-only code
+// The actual implementation will be provided through server actions
+const clientSideStorageAdapter = {
+  isOnline: async () => {
+    // Check browser online status as a fallback
+    if (typeof navigator !== 'undefined' && 'onLine' in navigator) {
+      return navigator.onLine;
+    }
+    return false;
+  },
+  goOffline: () => {},
+  goOnline: async () => false,
+  // Add other methods as needed, but they will be minimal client-side implementations
+  // Actual data operations will be performed via API routes
+};
+
+// Stub for the syncService with minimal client-side implementation
+const clientSideSyncService = {
+  syncPendingChanges: async () => false,
+  getPendingChangesCount: () => 0,
+  getSyncState: () => ({ lastSyncTime: 0, isSyncing: false, syncError: null, pendingChanges: {} }),
+  fullSync: async () => false,
+  downloadAllData: async () => false,
+};
 
 /**
  * Hook for accessing storage adapter functionality
@@ -18,13 +45,13 @@ export function useStorage() {
   // Check online status and pending changes on mount
   useEffect(() => {
     const checkStatus = async () => {
-      const online = await storageAdapter.isOnline();
+      const online = await clientSideStorageAdapter.isOnline();
       setIsOnline(online);
       
-      const pendingCount = syncService.getPendingChangesCount();
+      const pendingCount = clientSideSyncService.getPendingChangesCount();
       setPendingChanges(pendingCount);
       
-      const syncState = syncService.getSyncState();
+      const syncState = clientSideSyncService.getSyncState();
       setIsSyncing(syncState.isSyncing);
     };
     
@@ -63,8 +90,8 @@ export function useStorage() {
     
     setIsSyncing(true);
     try {
-      const result = await syncService.syncPendingChanges();
-      setPendingChanges(syncService.getPendingChangesCount());
+      const result = await clientSideSyncService.syncPendingChanges();
+      setPendingChanges(clientSideSyncService.getPendingChangesCount());
       return result;
     } finally {
       setIsSyncing(false);
@@ -75,7 +102,7 @@ export function useStorage() {
    * Force app to go online and connect to MongoDB
    */
   const goOnline = useCallback(async () => {
-    const result = await storageAdapter.goOnline();
+    const result = await clientSideStorageAdapter.goOnline();
     setIsOnline(result);
     return result;
   }, []);
@@ -84,7 +111,7 @@ export function useStorage() {
    * Force app to use offline mode with localStorage
    */
   const goOffline = useCallback(() => {
-    storageAdapter.goOffline();
+    clientSideStorageAdapter.goOffline();
     setIsOnline(false);
   }, []);
   
@@ -96,8 +123,8 @@ export function useStorage() {
     
     setIsSyncing(true);
     try {
-      const result = await syncService.fullSync();
-      setPendingChanges(syncService.getPendingChangesCount());
+      const result = await clientSideSyncService.fullSync();
+      setPendingChanges(clientSideSyncService.getPendingChangesCount());
       return result;
     } finally {
       setIsSyncing(false);
@@ -112,7 +139,7 @@ export function useStorage() {
     
     setIsSyncing(true);
     try {
-      const result = await syncService.downloadAllData();
+      const result = await clientSideSyncService.downloadAllData();
       return result;
     } finally {
       setIsSyncing(false);
@@ -126,7 +153,7 @@ export function useStorage() {
     pendingChanges,
     
     // Storage operations
-    storage: storageAdapter,
+    storage: storageService, // Use only local storage on the client side
     
     // Sync operations
     syncChanges,

@@ -80,16 +80,44 @@ export function useTeam(): UseTeamResult {
     : null;
 
   /**
-   * Load all teams from storage
+   * Load all teams from API
    */
-  const loadTeams = useCallback(() => {
+  const loadTeams = useCallback(async () => {
     try {
       setIsLoading(true);
+      
+      // First try to get teams from API
+      const response = await fetch('/api/teams/memberships');
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.success && data.teams) {
+          console.log('Teams loaded from API:', data.teams);
+          setTeams(data.teams);
+          setError(null);
+          return;
+        }
+      }
+      
+      // Fallback to local storage if API fails
+      console.log('Falling back to localStorage for teams');
       const allTeams = storageService.team.getAllTeams();
       setTeams(allTeams);
       setError(null);
     } catch (err) {
+      console.error('Failed to load teams:', err);
       setError('Failed to load teams: ' + String(err));
+      
+      // Try local storage as last resort
+      try {
+        const allTeams = storageService.team.getAllTeams();
+        if (allTeams && allTeams.length > 0) {
+          setTeams(allTeams);
+        }
+      } catch (storageErr) {
+        console.error('Storage fallback also failed:', storageErr);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -165,7 +193,11 @@ export function useTeam(): UseTeamResult {
 
   // Load teams on initial mount
   useEffect(() => {
-    loadTeams();
+    const fetchTeams = async () => {
+      await loadTeams();
+    };
+    
+    fetchTeams();
   }, [loadTeams]);
 
   return {
