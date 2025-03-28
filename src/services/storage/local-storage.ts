@@ -33,12 +33,32 @@ export const STORAGE_KEYS = {
       try {
         localStorage.setItem(testKey, testKey);
         localStorage.removeItem(testKey);
+        
+        // Setup storage event listener for cross-tab sync
+        if (!this.hasSetupListeners) {
+          window.addEventListener('storage', (event) => {
+            console.log('Storage event:', event.key, event.newValue);
+            
+            // Dispatch custom events for specific keys
+            if (event.key === STORAGE_KEYS.CURRENT_TEAM) {
+              console.log('Current team changed in another tab, dispatching event');
+              window.dispatchEvent(new CustomEvent('team-changed', { 
+                detail: { teamId: JSON.parse(event.newValue || 'null') } 
+              }));
+            }
+          });
+          this.hasSetupListeners = true;
+        }
+        
         return true;
       } catch (e: unknown) {
         console.error('Error checking localStorage availability:', e);
         return false;
       }
     }
+    
+    // Track if we've already set up event listeners
+    private hasSetupListeners = false;
   
     public getItem<T>(key: string): T | null {
       if (!this.isAvailable) return null;
@@ -156,10 +176,23 @@ export const STORAGE_KEYS = {
     }
     
     public setCurrentTeam(teamId: string | null): boolean {
+      let result: boolean;
+      
       if (teamId === null) {
-        return this.removeItem(STORAGE_KEYS.CURRENT_TEAM);
+        result = this.removeItem(STORAGE_KEYS.CURRENT_TEAM);
+      } else {
+        result = this.setItem(STORAGE_KEYS.CURRENT_TEAM, teamId);
       }
-      return this.setItem(STORAGE_KEYS.CURRENT_TEAM, teamId);
+      
+      // If successful, dispatch a team-changed event to ensure UI updates
+      if (result && typeof window !== 'undefined') {
+        console.log('Dispatching team-changed event after setting current team to:', teamId);
+        window.dispatchEvent(new CustomEvent('team-changed', { 
+          detail: { teamId } 
+        }));
+      }
+      
+      return result;
     }
   }
   

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Flex, Box, Text, IconButton, Container, useColorModeValue, Menu, MenuButton, MenuList, MenuItem, Button, Avatar, Spinner, MenuDivider } from '@chakra-ui/react';
+import { Flex, Box, Text, IconButton, Container, useColorModeValue, Menu, MenuButton, MenuList, MenuItem, Button, Avatar, Spinner, MenuDivider, useToast } from '@chakra-ui/react';
 import { FiSettings, FiMenu, FiLogOut, FiUser, FiChevronDown } from 'react-icons/fi';
 import NextLink from 'next/link';
 import { useAuth } from '../../contexts/auth-context';
@@ -22,6 +22,7 @@ const Header: React.FC<HeaderProps> = ({ currentTeam, onOpenSidebar }) => {
   const { user, isAuthenticated, logout, changeActiveTeam } = useAuth();
   const { teams, isLoading: isTeamsLoading } = useTeamContext();
   const router = useRouter();
+  const toast = useToast();
   
   // Colors
   const bgColor = useColorModeValue('white', 'gray.800');
@@ -115,15 +116,52 @@ const Header: React.FC<HeaderProps> = ({ currentTeam, onOpenSidebar }) => {
                           // Handle team switching
                           try {
                             console.log('Switching to team:', team.name, team.id);
+                            
+                            // Set a loading indicator
+                            const loadingToast = toast({
+                              title: 'Switching teams...',
+                              status: 'loading',
+                              position: 'top',
+                              duration: null
+                            });
+                            
+                            // First update localStorage directly for reliability
+                            localStorage.setItem('team_current', JSON.stringify(team.id));
+                            
+                            // Then make the API call to update server state
                             const success = await changeActiveTeam(team.id);
+                            
                             if (success) {
                               console.log('Switched to team:', team.name);
+                              toast.close(loadingToast);
+                              toast({
+                                title: 'Team switched!',
+                                description: `Now viewing ${team.name}`,
+                                status: 'success',
+                                duration: 2000,
+                                position: 'top'
+                              });
                               
                               // Force a full page reload to reset all state
                               window.location.href = '/dashboard';
+                            } else {
+                              toast.close(loadingToast);
+                              toast({
+                                title: 'Error switching teams',
+                                status: 'error',
+                                duration: 3000,
+                                position: 'top'
+                              });
                             }
                           } catch (error) {
                             console.error('Error switching teams:', error);
+                            toast({
+                              title: 'Error switching teams',
+                              description: 'Please try again',
+                              status: 'error',
+                              duration: 3000,
+                              position: 'top'
+                            });
                           }
                         }}
                         fontWeight={currentTeam?.id === team.id ? 'bold' : 'normal'}

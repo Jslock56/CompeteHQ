@@ -312,25 +312,7 @@ const DashboardPage = () => {
 
   return (
     <Container maxW="container.xl" py={8}>
-      {/* Team Selector */}
-      {teams.length > 1 && (
-        <Box mb={8}>
-          <Flex align="center" mb={4}>
-            <Text mr={4} fontWeight="medium">Select Team:</Text>
-            <Select
-              value={selectedTeam?.id || ''}
-              onChange={handleTeamChange}
-              maxW="400px"
-            >
-              {teams.map(team => (
-                <option key={team.id} value={team.id}>
-                  {team.name} ({team.ageGroup} - {team.season})
-                </option>
-              ))}
-            </Select>
-          </Flex>
-        </Box>
-      )}
+      {/* Team Selector removed - using only the header dropdown */}
 
       {/* Team Header */}
       {selectedTeam && (

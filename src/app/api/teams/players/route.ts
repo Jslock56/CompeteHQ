@@ -14,6 +14,7 @@ import { v4 as uuidv4 } from 'uuid';
 const connectDB = async () => {
   // Check if already connected
   if (mongoose.connection.readyState >= 1) {
+    console.log("=> Using existing Mongoose connection");
     return;
   }
 
@@ -24,13 +25,23 @@ const connectDB = async () => {
     throw new Error("MONGODB_URI is not defined in environment variables");
   }
 
-  console.log("Connecting to MongoDB...");
+  console.log("Connecting to MongoDB via Mongoose...");
   try {
     await mongoose.connect(MONGODB_URI);
-    console.log("MongoDB connected successfully");
+    console.log("Mongoose MongoDB connected successfully");
   } catch (error) {
-    console.error("MongoDB connection error:", error);
+    console.error("Mongoose MongoDB connection error:", error);
     throw new Error("Failed to connect to MongoDB");
+  }
+  
+  // Also ensure the native MongoDB client is connected
+  const { mongoDBService } = await import('../../../../services/database/mongodb');
+  if (!mongoDBService.isConnectedToDatabase()) {
+    console.log("Connecting to MongoDB via native client...");
+    await mongoDBService.connect();
+    console.log("Native MongoDB client connected successfully");
+  } else {
+    console.log("=> Using existing native MongoDB connection");
   }
 };
 
@@ -38,7 +49,9 @@ const connectDB = async () => {
 async function getCurrentUser(request: NextRequest) {
   // First try cookie-based auth
   const cookieStore = cookies();
-  const authToken = cookieStore.get('auth_token')?.value;
+  // Use await with cookies to fix the synchronous API usage error
+  const authCookie = await cookieStore.get('auth_token');
+  const authToken = authCookie?.value;
   
   // If no cookie token, try checking Authorization header
   const headerToken = request.headers.get('Authorization')?.replace('Bearer ', '');
