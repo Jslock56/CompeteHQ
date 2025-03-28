@@ -1,10 +1,12 @@
 'use client';
 
 import React from 'react';
-import { Flex, Box, Text, IconButton, Container, useColorModeValue, Menu, MenuButton, MenuList, MenuItem, Button, Avatar } from '@chakra-ui/react';
-import { FiSettings, FiMenu, FiLogOut, FiUser } from 'react-icons/fi';
+import { Flex, Box, Text, IconButton, Container, useColorModeValue, Menu, MenuButton, MenuList, MenuItem, Button, Avatar, Spinner, MenuDivider } from '@chakra-ui/react';
+import { FiSettings, FiMenu, FiLogOut, FiUser, FiChevronDown } from 'react-icons/fi';
 import NextLink from 'next/link';
 import { useAuth } from '../../contexts/auth-context';
+import { useTeamContext } from '../../contexts/team-context';
+import { useRouter } from 'next/navigation';
 
 interface HeaderProps {
   currentTeam?: {
@@ -17,7 +19,9 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ currentTeam, onOpenSidebar }) => {
   // Get authentication state
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout, changeActiveTeam } = useAuth();
+  const { teams, isLoading: isTeamsLoading } = useTeamContext();
+  const router = useRouter();
   
   // Colors
   const bgColor = useColorModeValue('white', 'gray.800');
@@ -76,10 +80,64 @@ const Header: React.FC<HeaderProps> = ({ currentTeam, onOpenSidebar }) => {
 
           {/* Team information, user profile and settings */}
           <Flex align="center">
-            {currentTeam && (
-              <Text fontSize="sm" fontWeight="medium" mr="4" display={{ base: 'none', sm: 'block' }}>
-                {currentTeam.name} {currentTeam.ageGroup && `| ${currentTeam.ageGroup}`}
-              </Text>
+            {isAuthenticated && (
+              <Menu>
+                <MenuButton 
+                  as={Button} 
+                  rightIcon={<FiChevronDown />} 
+                  variant="ghost"
+                  size="sm"
+                  mr="4"
+                  display={{ base: 'none', sm: 'flex' }}
+                >
+                  {isTeamsLoading ? (
+                    <Spinner size="xs" mr="2" />
+                  ) : currentTeam ? (
+                    <Text>
+                      {currentTeam.name} {currentTeam.ageGroup && `| ${currentTeam.ageGroup}`}
+                    </Text>
+                  ) : (
+                    <Text color="gray.500">Select a team</Text>
+                  )}
+                </MenuButton>
+                <MenuList zIndex={100}>
+                  <MenuItem fontWeight="bold" isDisabled>Your Teams</MenuItem>
+                  <MenuDivider />
+                  {isTeamsLoading ? (
+                    <MenuItem justifyContent="center" isDisabled>
+                      <Spinner size="sm" />
+                    </MenuItem>
+                  ) : teams && teams.length > 0 ? (
+                    teams.map(team => (
+                      <MenuItem 
+                        key={team.id}
+                        onClick={async () => {
+                          // Handle team switching
+                          try {
+                            console.log('Switching to team:', team.name, team.id);
+                            const success = await changeActiveTeam(team.id);
+                            if (success) {
+                              console.log('Switched to team:', team.name);
+                              
+                              // Force a full page reload to reset all state
+                              window.location.href = '/dashboard';
+                            }
+                          } catch (error) {
+                            console.error('Error switching teams:', error);
+                          }
+                        }}
+                        fontWeight={currentTeam?.id === team.id ? 'bold' : 'normal'}
+                      >
+                        {team.name} {team.ageGroup && `| ${team.ageGroup}`}
+                      </MenuItem>
+                    ))
+                  ) : (
+                    <MenuItem isDisabled>No teams available</MenuItem>
+                  )}
+                  <MenuDivider />
+                  <MenuItem as={NextLink} href="/teams/new">+ Create New Team</MenuItem>
+                </MenuList>
+              </Menu>
             )}
             
             {isAuthenticated ? (

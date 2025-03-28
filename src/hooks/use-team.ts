@@ -191,6 +191,23 @@ export function useTeam(): UseTeamResult {
     return success;
   }, [currentTeamId, clearCurrentTeamId]);
 
+  // Listen for team change events
+  useEffect(() => {
+    const handleTeamChange = (event: CustomEvent) => {
+      console.log('Team change event detected', event.detail);
+      // Force reload teams when team changes
+      loadTeams();
+    };
+    
+    // Add event listener for team changes
+    window.addEventListener('team-changed', handleTeamChange as EventListener);
+    
+    // Clean up
+    return () => {
+      window.removeEventListener('team-changed', handleTeamChange as EventListener);
+    };
+  }, [loadTeams]);
+  
   // Load teams on initial mount
   useEffect(() => {
     const fetchTeams = async () => {
