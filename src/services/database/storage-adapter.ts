@@ -98,15 +98,15 @@ class StorageAdapter implements StorageInterface {
     const settings = await this.getSettings();
     if (settings?.preferOffline) {
       console.log('preferOffline is set, using local storage for all data');
-      return true; // Force offline mode when user prefers it
+      return true; // Return offline mode when user prefers it
     }
     
-    // Try MongoDB connection but prioritize local storage for now to fix data loading issues
+    // Check MongoDB connection - prefer online mode when possible
     const isConnected = mongoDBService.isConnectedToDatabase();
     console.log('MongoDB connection status:', isConnected ? 'Connected' : 'Not connected');
     
-    // For now, to ensure data is accessible, default to local storage
-    return true; // Force offline mode temporarily
+    // Return true if not connected, false if connected (prefer MongoDB when online)
+    return !isConnected;
   }
   
   /**

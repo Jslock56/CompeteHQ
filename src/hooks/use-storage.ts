@@ -8,21 +8,65 @@
 import { useState, useEffect, useCallback } from 'react';
 import { storageService } from '../services/storage/enhanced-storage';
 
-// Stub for the server-side storageAdapter
-// This provides client-side type compatibility without importing server-only code
-// The actual implementation will be provided through server actions
+// Client-side implementation of the StorageAdapter
+// Focuses on connectivity checks and online/offline status
 const clientSideStorageAdapter = {
+  // Check if server is online and database is connected
   isOnline: async () => {
-    // Check browser online status as a fallback
-    if (typeof navigator !== 'undefined' && 'onLine' in navigator) {
-      return navigator.onLine;
+    try {
+      // First check browser online status
+      if (typeof navigator !== 'undefined' && 'onLine' in navigator && !navigator.onLine) {
+        return false; // If browser is offline, we're definitely offline
+      }
+      
+      // Then try the health check endpoint
+      const response = await fetch('/api/health', { 
+        method: 'GET',
+        // Cache control to ensure fresh response
+        headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        return data.success && data.services.database.connected;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Error checking online status:', error);
+      return false;
     }
-    return false;
   },
-  goOffline: () => {},
-  goOnline: async () => false,
-  // Add other methods as needed, but they will be minimal client-side implementations
-  // Actual data operations will be performed via API routes
+  
+  // Force offline mode
+  goOffline: () => {
+    // Store preference in local storage
+    try {
+      const settings = localStorage.getItem('competeHQ_settings');
+      const parsedSettings = settings ? JSON.parse(settings) : {};
+      parsedSettings.preferOffline = true;
+      localStorage.setItem('competeHQ_settings', JSON.stringify(parsedSettings));
+    } catch (error) {
+      console.error('Error setting offline mode:', error);
+    }
+  },
+  
+  // Try to go online
+  goOnline: async () => {
+    try {
+      // Update settings
+      const settings = localStorage.getItem('competeHQ_settings');
+      const parsedSettings = settings ? JSON.parse(settings) : {};
+      parsedSettings.preferOffline = false;
+      localStorage.setItem('competeHQ_settings', JSON.stringify(parsedSettings));
+      
+      // Check connectivity
+      return await clientSideStorageAdapter.isOnline();
+    } catch (error) {
+      console.error('Error setting online mode:', error);
+      return false;
+    }
+  }
 };
 
 // Stub for the syncService with minimal client-side implementation
@@ -45,11 +89,15 @@ export function useStorage() {
   // Check online status and pending changes on mount
   useEffect(() => {
     const checkStatus = async () => {
-      // Force offline mode until API routes are fixed
-      setIsOnline(false);
+      // Check online status from browser and server
+      const browserOnline = typeof navigator !== 'undefined' && navigator.onLine;
+      const serverOnline = await clientSideStorageAdapter.isOnline();
       
-      // Tell user we're in offline mode to ensure data is accessible
-      console.log('Running in offline mode to ensure data accessibility');
+      // We're online if both browser and server indicate we're online
+      const online = browserOnline && serverOnline;
+      setIsOnline(online);
+      
+      console.log(`Online status: ${online ? 'Online' : 'Offline'} (Browser: ${browserOnline}, Server: ${serverOnline})`);
       
       const pendingCount = clientSideSyncService.getPendingChangesCount();
       setPendingChanges(pendingCount);
