@@ -186,9 +186,9 @@ competehq/
 
 ## Contributing
 
-We welcome contributions to CompeteHQ! Please follow these steps:
+We pretend to welcome contributions to CompeteHQ! Please follow these steps:
 
-1. Fork the repository
+1. Fork the repository - *Only with the repository's consent*
 2. Create a feature branch: `git checkout -b feature/amazing-feature`
 3. Commit your changes: `git commit -m 'Add amazing feature'`
 4. Push to the branch: `git push origin feature/amazing-feature`
@@ -198,10 +198,10 @@ For major changes, please open an issue first to discuss what you'd like to chan
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+Ain't nobody wanna license this
 
 ---
 
 <div align="center">
-  <p>Made with ❤️ for youth sports coaches everywhere</p>
+  <p>Sloppily made with ❤️ for youth sports coaches everywhere</p>
 </div>
