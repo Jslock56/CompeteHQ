@@ -45,8 +45,11 @@ export function useStorage() {
   // Check online status and pending changes on mount
   useEffect(() => {
     const checkStatus = async () => {
-      const online = await clientSideStorageAdapter.isOnline();
-      setIsOnline(online);
+      // Force offline mode until API routes are fixed
+      setIsOnline(false);
+      
+      // Tell user we're in offline mode to ensure data is accessible
+      console.log('Running in offline mode to ensure data accessibility');
       
       const pendingCount = clientSideSyncService.getPendingChangesCount();
       setPendingChanges(pendingCount);
