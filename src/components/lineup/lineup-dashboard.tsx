@@ -238,7 +238,7 @@ const LineupDashboard: React.FC<LineupDashboardProps> = ({
               {/* Actions */}
               <Flex 
                 p={3} 
-                bg={headerBg} 
+                bg={colors.headerBg} 
                 align={{ base: 'stretch', md: 'center' }} 
                 gap={2}
                 direction={{ base: 'row', md: 'row' }}

@@ -9,6 +9,8 @@ import { Team, ITeam } from '../../models/team';
 import { TeamMembership, ITeamMembership } from '../../models/team-membership';
 import { Invitation, IInvitation } from '../../models/invitation';
 import { TeamCode } from '../../models/team-code';
+import { NextRequest } from 'next/server';
+import { ReadonlyRequestCookies } from 'next/dist/server/web/spec-extension/adapters/request-cookies';
 
 // Constants
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -622,6 +624,42 @@ class AuthService {
       return code;
     } catch (error) {
       console.error('Error generating initial team code:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Gets the current user from an API request
+   * Returns null if not authenticated
+   */
+  async getCurrentUser(request: NextRequest, cookieStore: ReadonlyRequestCookies): Promise<IUser | null> {
+    try {
+      console.log('Getting current user from API request');
+      const authToken = cookieStore.get('auth_token')?.value;
+      
+      if (!authToken) {
+        console.log('No auth token found in cookies');
+        return null;
+      }
+      
+      const tokenVerification = await this.verifyToken(authToken);
+      
+      if (!tokenVerification.valid || !tokenVerification.userId) {
+        console.log('Invalid or expired token');
+        return null;
+      }
+      
+      // Get user data
+      const user = await this.getUserById(tokenVerification.userId);
+      
+      if (!user) {
+        console.log('User not found for token');
+        return null;
+      }
+      
+      return user;
+    } catch (error) {
+      console.error('Error getting current user:', error);
       return null;
     }
   }

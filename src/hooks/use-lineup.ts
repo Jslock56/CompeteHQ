@@ -361,6 +361,9 @@ export const useLineup = ({
     try {
       // First try to save to API
       try {
+        console.log(`Attempting to save lineup to API with ID: ${lineupToSave.id}, name: ${lineupToSave.name}, teamId: ${lineupToSave.teamId}`);
+        console.log(`Using ${lineupToSave.id ? 'PUT' : 'POST'} method for lineup`);
+        
         const response = await fetch('/api/lineups', {
           method: lineupToSave.id ? 'PUT' : 'POST',
           headers: {
@@ -381,9 +384,18 @@ export const useLineup = ({
             // Update local state
             setLineup(data.lineup);
             return data.lineup;
+          } else {
+            console.warn('API response was OK but data.success was false or data.lineup was missing', data);
           }
         } else {
           console.warn(`API returned status ${response.status} when saving lineup`);
+          // Try to get more detailed error information
+          try {
+            const errorData = await response.json();
+            console.warn('Error details:', errorData);
+          } catch (e) {
+            console.warn('Could not parse error response:', e);
+          }
         }
       } catch (apiError) {
         console.error('Failed to save lineup to API, falling back to local storage:', apiError);
@@ -397,6 +409,8 @@ export const useLineup = ({
         // Update local state
         setLineup(lineupToSave);
         return lineupToSave;
+      } else {
+        console.error('Failed to save lineup to local storage');
       }
     } catch (error) {
       console.error('Error saving lineup:', error);

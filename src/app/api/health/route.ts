@@ -3,63 +3,57 @@ import mongoDBService from '../../../services/database/mongodb';
 
 /**
  * GET /api/health
- * Health check endpoint that validates database connectivity
+ * Health check endpoint for checking service status
  */
 export async function GET(request: NextRequest) {
   try {
-    // Connect to MongoDB
-    const isConnected = await mongoDBService.connect();
+    // Check MongoDB connection
+    let databaseConnected = false;
+    let databaseError = null;
     
-    // Start time for database connectivity check
-    const startTime = Date.now();
-    
-    // Simple database operation to verify connectivity
-    let dbOperationTime = 0;
-    let dbOperation = false;
-    
-    if (isConnected) {
-      try {
-        // Perform a simple MongoDB operation to test actual connectivity
-        const result = await mongoDBService.getAllTeams();
-        dbOperation = true;
-        dbOperationTime = Date.now() - startTime;
-      } catch (dbError) {
-        console.error('Database operation failed:', dbError);
-        dbOperation = false;
-      }
+    try {
+      await mongoDBService.connect();
+      databaseConnected = mongoDBService.isConnectedToDatabase();
+    } catch (error) {
+      console.error('Health check - MongoDB connection error:', error);
+      databaseError = String(error);
     }
     
-    // Response data
-    const healthData = {
+    // Return health status for all services
+    return NextResponse.json({
       success: true,
       status: 'ok',
-      timestamp: new Date().toISOString(),
       services: {
+        api: {
+          status: 'ok',
+          connected: true
+        },
         database: {
-          connected: isConnected,
-          healthy: dbOperation,
-          responseTime: dbOperationTime
+          status: databaseConnected ? 'ok' : 'error',
+          connected: databaseConnected,
+          error: databaseError
         }
-      },
-      version: process.env.NEXT_PUBLIC_APP_VERSION || '0.1.0'
-    };
-
-    return NextResponse.json(healthData);
+      }
+    }, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
   } catch (error) {
-    console.error('Health check failed:', error);
-    
+    console.error('Health check error:', error);
     return NextResponse.json({
       success: false,
       status: 'error',
-      timestamp: new Date().toISOString(),
-      services: {
-        database: {
-          connected: false,
-          healthy: false,
-          responseTime: -1
-        }
-      },
       error: String(error)
-    }, { status: 500 });
+    }, {
+      status: 500,
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
   }
 }

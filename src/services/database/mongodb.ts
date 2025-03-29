@@ -112,8 +112,14 @@ class MongoDBService {
    * Should be called during app startup
    */
   async connect(): Promise<boolean> {
-    if (this.isConnected) return true;
-    if (this.isConnecting) return false;
+    if (this.isConnected) {
+      console.log('Already connected to MongoDB, reusing connection');
+      return true;
+    }
+    if (this.isConnecting) {
+      console.log('MongoDB connection attempt already in progress');
+      return false;
+    }
     
     try {
       this.isConnecting = true;
@@ -125,6 +131,7 @@ class MongoDBService {
         if (process.env.NODE_ENV === 'production') {
           throw new Error('MongoDB URI is required in production environment');
         }
+        console.log('Running in development mode without MongoDB - using local storage only');
         return false;
       }
 
@@ -167,6 +174,13 @@ class MongoDBService {
       this.connectionError = error as Error;
       console.error('Failed to connect to MongoDB:', error);
       console.error('Please check your MONGODB_URI in the .env file and ensure Atlas network access is configured correctly.');
+      
+      // Log more details about the error for debugging
+      if (error instanceof Error) {
+        console.error(`Error name: ${error.name}, message: ${error.message}`);
+        console.error(`Stack trace: ${error.stack}`);
+      }
+      
       return false;
     } finally {
       this.isConnecting = false;
@@ -221,7 +235,9 @@ class MongoDBService {
    * Check if connected to the database
    */
   isConnectedToDatabase(): boolean {
-    return this.isConnected;
+    const connectionState = this.isConnected;
+    console.log(`MongoDB connection status: ${connectionState ? 'Connected' : 'Not connected'}`);
+    return connectionState;
   }
 
   /**
@@ -600,6 +616,8 @@ class MongoDBService {
     if (!this.gamesCollection) throw new Error('Games collection is not initialized');
     
     try {
+      console.log(`MongoDB: Saving lineup with ID: ${lineup.id}, name: ${lineup.name}, teamId: ${lineup.teamId}, gameId: ${lineup.gameId || 'N/A'}`);
+      
       // Start a session to use transactions
       const session = this.client?.startSession();
       
@@ -614,23 +632,34 @@ class MongoDBService {
           { upsert: true, session }
         );
         
-        // Update the game to reference this lineup
-        const game = await this.gamesCollection.findOne({ id: lineup.gameId });
+        console.log(`MongoDB: Lineup save result - acknowledged: ${lineupResult.acknowledged}, upsertedCount: ${lineupResult.upsertedCount}, modifiedCount: ${lineupResult.modifiedCount}`);
         
-        if (game && !game.lineupId) {
-          await this.gamesCollection.updateOne(
-            { id: lineup.gameId },
-            { $set: { lineupId: lineup.id } },
-            { session }
-          );
+        // Only if this is a game lineup
+        if (lineup.gameId) {
+          console.log(`MongoDB: This is a game lineup, checking game reference for gameId: ${lineup.gameId}`);
+          // Update the game to reference this lineup
+          const game = await this.gamesCollection.findOne({ id: lineup.gameId });
+          
+          if (game && !game.lineupId) {
+            console.log(`MongoDB: Updating game to reference lineup ${lineup.id}`);
+            await this.gamesCollection.updateOne(
+              { id: lineup.gameId },
+              { $set: { lineupId: lineup.id } },
+              { session }
+            );
+          }
+        } else {
+          console.log(`MongoDB: This is a non-game lineup (${lineup.name})`);
         }
         
         // Commit the transaction
         await session?.commitTransaction();
+        console.log(`MongoDB: Successfully committed transaction for lineup save`);
         
         return lineupResult.acknowledged;
       } catch (error) {
         // Abort the transaction in case of error
+        console.error(`MongoDB: Error during lineup save transaction:`, error);
         await session?.abortTransaction();
         throw error;
       } finally {
