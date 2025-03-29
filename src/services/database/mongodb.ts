@@ -12,7 +12,12 @@ import { Practice } from '../../types/practice';
 import { PositionHistory } from '../../types/position-history';
 
 // Environment variables
-const MONGODB_URI = process.env.MONGODB_URI || '';
+const MONGODB_URI = process.env.MONGODB_URI;
+
+// If MongoDB URI is not provided and we're in production, we should throw an error
+if (!MONGODB_URI && process.env.NODE_ENV === 'production') {
+  throw new Error('MONGODB_URI is required in production environment');
+}
 const DB_NAME = 'competehq';
 
 // Mongoose global connection
@@ -116,7 +121,11 @@ class MongoDBService {
 
       // Check if MongoDB URI is provided
       if (!MONGODB_URI) {
-        throw new Error('MongoDB URI is not defined in environment variables');
+        console.warn('MongoDB URI is not defined in environment variables');
+        if (process.env.NODE_ENV === 'production') {
+          throw new Error('MongoDB URI is required in production environment');
+        }
+        return false;
       }
 
       console.log('Connecting to MongoDB...');

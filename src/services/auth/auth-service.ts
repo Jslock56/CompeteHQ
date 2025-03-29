@@ -11,7 +11,14 @@ import { Invitation, IInvitation } from '../../models/invitation';
 import { TeamCode } from '../../models/team-code';
 
 // Constants
-const JWT_SECRET = process.env.JWT_SECRET || 'a-very-secure-jwt-secret-key-that-should-be-in-env';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('JWT_SECRET is not defined in environment variables');
+  // In production, we should throw an error, but for development we'll continue with a warning
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET is required in production');
+  }
+}
 const SALT_ROUNDS = 10;
 const TOKEN_EXPIRY = '7d'; // 7 days
 const VERIFICATION_TOKEN_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours in ms
