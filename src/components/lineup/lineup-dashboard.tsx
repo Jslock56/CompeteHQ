@@ -57,12 +57,19 @@ const LineupDashboard: React.FC<LineupDashboardProps> = ({
   onDeleteLineup,
   onSetDefault
 }) => {
+  // Call hooks in the same order every time
   const toast = useToast();
   const { currentTeam } = useTeamContext();
   
-  // Background colors
-  const cardBg = useColorModeValue('white', 'gray.700');
-  const headerBg = useColorModeValue('gray.50', 'gray.800');
+  // Call all color mode hooks at the top level consistently
+  const colors = {
+    cardBg: useColorModeValue('white', 'gray.700'),
+    headerBg: useColorModeValue('gray.50', 'gray.800'),
+    textColor: useColorModeValue('gray.600', 'gray.400'),
+    defaultBg: useColorModeValue('yellow.50', 'yellow.900'),
+    defaultBorderColor: useColorModeValue('yellow.300', 'yellow.600'),
+    borderColor: useColorModeValue('gray.200', 'gray.700')
+  };
   
   // Handle delete lineup
   const handleDelete = async (lineupId: string, name: string) => {
@@ -157,12 +164,12 @@ const LineupDashboard: React.FC<LineupDashboardProps> = ({
       {lineups.length === 0 ? (
         <Box 
           p={8} 
-          bg={cardBg} 
+          bg={colors.cardBg} 
           borderRadius="lg" 
           shadow="sm" 
           textAlign="center"
           borderWidth="1px"
-          borderColor={useColorModeValue('gray.200', 'gray.700')}
+          borderColor={colors.textColor}
         >
           <Text mb={6} color="gray.600">
             You haven't created any field position lineups yet. Create your first lineup to get started.
@@ -185,18 +192,18 @@ const LineupDashboard: React.FC<LineupDashboardProps> = ({
             <Flex
               key={lineup.id}
               direction={{ base: 'column', md: 'row' }}
-              bg={cardBg}
+              bg={colors.cardBg}
               borderRadius="lg"
               overflow="hidden"
               borderWidth="1px"
-              borderColor={useColorModeValue('gray.200', 'gray.700')}
+              borderColor={colors.textColor}
               shadow="sm"
             >
               {/* Lineup Info */}
               <Box 
                 p={4} 
                 flex="1"
-                bg={lineup.isDefault ? useColorModeValue('yellow.50', 'yellow.900') : undefined}
+                bg={lineup.isDefault ? colors.defaultBg : undefined}
               >
                 <Flex align="center" mb={2}>
                   <Heading size="md" mr={2}>

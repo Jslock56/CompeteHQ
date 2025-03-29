@@ -81,11 +81,16 @@ interface GameSummary {
 }
 
 const DashboardPage = () => {
+  // Get all context hooks and colorMode first
   const router = useRouter();
   const toast = useToast();
   const { user, isLoading: authLoading } = useAuth();
   const { currentTeam, setCurrentTeam } = useTeamContext();
-
+  // Pre-fetch color mode values that will be used later
+  const bgColor = useColorModeValue('white', 'gray.800');
+  const textColor = useColorModeValue('gray.600', 'gray.400');
+  
+  // Then declare all state hooks
   const [teams, setTeams] = useState<Team[]>([]);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [recentGames, setRecentGames] = useState<GameSummary[]>([]);
@@ -330,7 +335,7 @@ const DashboardPage = () => {
               justify="space-between"
               align={{ base: "flex-start", md: "center" }}
               direction={{ base: "column", md: "row" }}
-              bg={useColorModeValue('white', 'gray.800')}
+              bg={bgColor}
               p={6}
               borderRadius="lg"
               boxShadow="md"
@@ -349,7 +354,7 @@ const DashboardPage = () => {
                   />
                 </Flex>
                 {selectedTeam.description && (
-                  <Text mt={2} color="gray.600">{selectedTeam.description}</Text>
+                  <Text mt={2} color={textColor}>{selectedTeam.description}</Text>
                 )}
               </Box>
               <HStack spacing={3}>
