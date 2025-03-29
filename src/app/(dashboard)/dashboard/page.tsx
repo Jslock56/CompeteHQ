@@ -48,6 +48,9 @@ import NextLink from 'next/link';
 import { useAuth } from '../../../contexts/auth-context';
 import { Permission } from '../../../models/user';
 import { useTeamContext } from '../../../contexts/team-context';
+import SportIcon from '../../../components/common/sport-icon';
+import TeamBadges from '../../../components/common/team-badges';
+import LoadingSpinner from '../../../components/common/loading-spinner';
 
 // Interface for team data
 interface Team {
@@ -304,8 +307,13 @@ const DashboardPage = () => {
 
   if (isLoading) {
     return (
-      <Flex justify="center" align="center" minH="60vh">
-        <Spinner size="xl" thickness="4px" color="primary.500" />
+      <Flex justify="center" align="center" minH="60vh" direction="column">
+        <LoadingSpinner 
+          type="baseball" 
+          size="xl" 
+          animation="pulse" 
+          text="Loading your team..." 
+        />
       </Flex>
     );
   }
@@ -328,13 +336,18 @@ const DashboardPage = () => {
               boxShadow="md"
             >
               <Box mb={{ base: 4, md: 0 }}>
-                <Heading size="lg" mb={2}>{selectedTeam.name}</Heading>
-                <HStack spacing={4}>
-                  <Badge colorScheme="blue">{selectedTeam.ageGroup}</Badge>
-                  <Badge colorScheme="green">{selectedTeam.season}</Badge>
-                  <Badge colorScheme="purple">{selectedTeam.sport === 'baseball' ? 'Baseball' : 'Softball'}</Badge>
-                  <Badge colorScheme="orange">{getRoleName(selectedTeam.role)}</Badge>
-                </HStack>
+                <Flex align="center" mb={2}>
+                  <Heading size="lg" mr={2}>{selectedTeam.name}</Heading>
+                  <SportIcon sport={selectedTeam.sport as 'baseball' | 'softball'} size="1.5rem" />
+                </Flex>
+                <Flex>
+                  <TeamBadges 
+                    ageGroup={selectedTeam.ageGroup}
+                    season={selectedTeam.season}
+                    role={selectedTeam.role}
+                    size="md"
+                  />
+                </Flex>
                 {selectedTeam.description && (
                   <Text mt={2} color="gray.600">{selectedTeam.description}</Text>
                 )}

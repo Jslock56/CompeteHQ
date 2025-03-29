@@ -8,12 +8,15 @@ import { useAuth } from '../../contexts/auth-context';
 import { useTeamContext } from '../../contexts/team-context';
 import { useRouter } from 'next/navigation';
 import Logo from './logo';
+import LoadingSpinner from './loading-spinner';
+import SportIcon from './sport-icon';
 
 interface HeaderProps {
   currentTeam?: {
     id: string;
     name: string;
     ageGroup?: string;
+    sport?: string;
   } | null;
   onOpenSidebar?: () => void;
 }
@@ -73,11 +76,18 @@ const Header: React.FC<HeaderProps> = ({ currentTeam, onOpenSidebar }) => {
                   display={{ base: 'none', sm: 'flex' }}
                 >
                   {isTeamsLoading ? (
-                    <Spinner size="xs" mr="2" />
+                    <LoadingSpinner type="baseball" size="xs" animation="rotate" />
                   ) : currentTeam ? (
-                    <Text>
-                      {currentTeam.name} {currentTeam.ageGroup && `| ${currentTeam.ageGroup}`}
-                    </Text>
+                    <Flex align="center">
+                      <Text mr={2}>
+                        {currentTeam.name}
+                      </Text>
+                      <SportIcon 
+                        sport={currentTeam.sport as 'baseball' | 'softball' || 'baseball'} 
+                        size="1rem"
+                        inline
+                      />
+                    </Flex>
                   ) : (
                     <Text color="gray.500">Select a team</Text>
                   )}
@@ -87,7 +97,7 @@ const Header: React.FC<HeaderProps> = ({ currentTeam, onOpenSidebar }) => {
                   <MenuDivider />
                   {isTeamsLoading ? (
                     <MenuItem justifyContent="center" isDisabled>
-                      <Spinner size="sm" />
+                      <LoadingSpinner type="baseball" size="sm" animation="rotate" />
                     </MenuItem>
                   ) : teams && teams.length > 0 ? (
                     teams.map(team => (
@@ -101,13 +111,14 @@ const Header: React.FC<HeaderProps> = ({ currentTeam, onOpenSidebar }) => {
                           try {
                             console.log('Switching to team:', team.name, team.id);
                             
-                            // Set a loading indicator
+                            // Set a loading indicator with baseball animation
                             loadingToast = toast({
                               title: 'Switching teams...',
                               status: 'loading',
                               position: 'top',
                               duration: null,
-                              id: 'team-switch-loading' // Add ID for easier reference
+                              id: 'team-switch-loading', // Add ID for easier reference
+                              icon: <LoadingSpinner type="baseball" size="sm" animation="rotate" />,
                             });
                             
                             // First update localStorage directly for reliability

@@ -21,6 +21,7 @@ import Header from "../common/header";
 import Navigation from "../common/navigation";
 import WidgetsSidebar from "../common/widgets-sidebar";
 import Logo from "../common/logo";
+import PageTransitions from "../common/page-transitions";
 
 export function AppLayout({ children }: { children: ReactNode }) {
   // Use Chakra's useDisclosure for controlling drawer/sidebar states
@@ -107,7 +108,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
           />
           
           <Box as="main">
-            {children}
+            <PageTransitions type="fade" duration={0.4}>
+              {children}
+            </PageTransitions>
           </Box>
         </Box>
         
