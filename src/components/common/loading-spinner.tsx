@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Box, Flex, keyframes, useColorModeValue } from '@chakra-ui/react';
+import { Box, Flex, useColorModeValue } from '@chakra-ui/react';
+import { keyframes } from '@emotion/react';
 
 // Types of animation available for the spinner
 export type SpinnerAnimationType = 'rotate' | 'pulse' | 'progress';
@@ -52,13 +53,15 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
     100% { width: 100%; }
   `;
   
-  // Colors
-  const baseballColor = useColorModeValue('white', 'gray.200');
-  const baseballStitchColor = useColorModeValue('blue.500', 'blue.300');
-  const softballColor = useColorModeValue('yellow.200', 'yellow.300');
-  const softballStitchColor = useColorModeValue('red.500', 'red.300');
-  const batColor = useColorModeValue('brown.500', 'brown.300');
-  const fillColor = useColorModeValue('teal.500', 'teal.300');
+  // Call all color mode hooks together at the top level
+  const colors = {
+    baseballColor: useColorModeValue('white', 'gray.200'),
+    baseballStitchColor: useColorModeValue('blue.500', 'blue.300'),
+    softballColor: useColorModeValue('yellow.200', 'yellow.300'),
+    softballStitchColor: useColorModeValue('red.500', 'red.300'),
+    batColor: useColorModeValue('brown.500', 'brown.300'),
+    fillColor: useColorModeValue('teal.500', 'teal.300')
+  };
   
   // Animation style based on selected animation type
   const animationStyle = {
@@ -83,8 +86,8 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
           width={sizeValue}
           height={sizeValue}
           borderRadius="50%"
-          bg={baseballColor}
-          boxShadow={`0 0 0 ${thickness} ${color || baseballStitchColor}`}
+          bg={colors.baseballColor}
+          boxShadow={`0 0 0 ${thickness} ${color || colors.baseballStitchColor}`}
           {...animationStyle[animation]}
         >
           {/* Baseball stitches */}
@@ -94,7 +97,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
             left="0"
             right="0"
             height={thickness}
-            bg={color || baseballStitchColor}
+            bg={color || colors.baseballStitchColor}
             transform="translateY(-50%)"
           />
           <Box
@@ -103,7 +106,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
             bottom="0"
             left="50%"
             width={thickness}
-            bg={color || baseballStitchColor}
+            bg={color || colors.baseballStitchColor}
             transform="translateX(-50%)"
           />
         </Box>
@@ -125,8 +128,8 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
           width={sizeValue}
           height={sizeValue}
           borderRadius="50%"
-          bg={softballColor}
-          boxShadow={`0 0 0 ${thickness} ${color || softballStitchColor}`}
+          bg={colors.softballColor}
+          boxShadow={`0 0 0 ${thickness} ${color || colors.softballStitchColor}`}
           {...animationStyle[animation]}
         >
           {/* Softball stitches */}
@@ -136,7 +139,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
             left="0"
             right="0"
             height={thickness}
-            bg={color || softballStitchColor}
+            bg={color || colors.softballStitchColor}
             transform="translateY(-50%)"
           />
           <Box
@@ -145,7 +148,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
             bottom="0"
             left="50%"
             width={thickness}
-            bg={color || softballStitchColor}
+            bg={color || colors.softballStitchColor}
             transform="translateX(-50%)"
           />
         </Box>
@@ -169,7 +172,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
             width="100%"
             height="100%"
             borderRadius="full"
-            bg={useColorModeValue('gray.200', 'gray.600')}
+            bg={colors.baseballColor}
             overflow="hidden"
           >
             {/* Fill animation */}
@@ -177,7 +180,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
               <Box
                 position="absolute"
                 height="100%"
-                bg={color || fillColor}
+                bg={color || colors.fillColor}
                 animation={`${progress} 1.5s ease-in-out infinite`}
               />
             ) : (
@@ -185,7 +188,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
                 position="absolute"
                 width="100%"
                 height="100%"
-                bg={color || batColor}
+                bg={color || colors.batColor}
                 {...animationStyle[animation]}
               />
             )}

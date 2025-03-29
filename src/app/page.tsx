@@ -96,31 +96,29 @@ export default function LandingPage() {
                 track playing time, and ensure every player gets a fair opportunity.
               </Text>
               <HStack spacing={4}>
-                <NextLink href="/signup" passHref>
-                  <Button 
-                    as="a" 
-                    size="lg" 
-                    colorScheme="white" 
-                    variant="solid"
-                    bg="white"
-                    color="primary.600"
-                    _hover={{ bg: "gray.100" }}
-                    px={8}
-                  >
-                    Get Started Free
-                  </Button>
-                </NextLink>
-                <NextLink href="#features" passHref>
-                  <Button
-                    as="a"
-                    size="lg"
-                    variant="outline"
-                    colorScheme="white"
-                    px={8}
+                <Button 
+                  as={NextLink}
+                  href="/signup"
+                  size="lg" 
+                  colorScheme="white" 
+                  variant="solid"
+                  bg="white"
+                  color="primary.600"
+                  _hover={{ bg: "gray.100" }}
+                  px={8}
+                >
+                  Get Started Free
+                </Button>
+                <Button
+                  as={NextLink}
+                  href="#features"
+                  size="lg"
+                  variant="outline"
+                  colorScheme="white"
+                  px={8}
                   >
                     Learn More
                   </Button>
-                </NextLink>
               </HStack>
             </Box>
             <Box 

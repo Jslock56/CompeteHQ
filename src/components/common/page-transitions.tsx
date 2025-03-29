@@ -15,9 +15,10 @@ const PageTransitions: React.FC<PageTransitionsProps> = ({
   type = 'fade',
   duration = 0.3,
 }) => {
-  const [isVisible, setIsVisible] = useState(false);
+  // Call all hooks at the top level in the same order
   const pathname = usePathname();
   const bgColor = useColorModeValue('white', 'gray.800');
+  const [isVisible, setIsVisible] = useState(false);
 
   // Reset visibility state when path changes
   useEffect(() => {

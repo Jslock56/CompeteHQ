@@ -11,11 +11,13 @@ interface SportIconProps {
 }
 
 const SportIcon: React.FC<SportIconProps> = ({ sport, size = '1em', inline = false }) => {
-  // Colors for different sports
-  const baseballFill = useColorModeValue('white', 'gray.100');
-  const baseballStitches = useColorModeValue('blue.500', 'blue.300');
-  const softballFill = useColorModeValue('yellow.200', 'yellow.100');
-  const softballStitches = useColorModeValue('red.500', 'red.300');
+  // Call all color mode hooks together at the top level
+  const colors = {
+    baseballFill: useColorModeValue('white', 'gray.100'),
+    baseballStitches: useColorModeValue('blue.500', 'blue.300'),
+    softballFill: useColorModeValue('yellow.200', 'yellow.100'),
+    softballStitches: useColorModeValue('red.500', 'red.300')
+  };
 
   if (sport === 'baseball') {
     return (
@@ -28,8 +30,8 @@ const SportIcon: React.FC<SportIconProps> = ({ sport, size = '1em', inline = fal
       >
         <Icon 
           as={FaBaseballBall} 
-          color={baseballStitches} 
-          bg={baseballFill} 
+          color={colors.baseballStitches} 
+          bg={colors.baseballFill} 
           borderRadius="full"
           boxSize={size}
         />
@@ -48,8 +50,8 @@ const SportIcon: React.FC<SportIconProps> = ({ sport, size = '1em', inline = fal
       >
         <Icon 
           as={FaBaseballBall} 
-          color={softballStitches} 
-          bg={softballFill} 
+          color={colors.softballStitches} 
+          bg={colors.softballFill} 
           borderRadius="full"
           boxSize={size}
         />
