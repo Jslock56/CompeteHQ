@@ -1,8 +1,8 @@
 import React from 'react';
 import { Box, Table, Thead, Tbody, Tr, Th, Td, Text, Flex, useColorModeValue } from '@chakra-ui/react';
-import { Lineup, Position } from '../../types/lineup';
-import { Player } from '../../types/player';
-import { PositionBadge } from '../common/position-badge';
+import { Lineup, Position } from '../../../types/lineup';
+import { Player } from '../../../types/player';
+import { PositionBadge } from '../../../components/common/position-badge';
 
 interface LineupGridSpreadsheetProps {
   /**

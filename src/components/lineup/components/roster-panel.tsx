@@ -10,7 +10,8 @@ import {
   VStack,
   Input,
   InputGroup,
-  InputLeftElement 
+  InputLeftElement,
+  Button
 } from '@chakra-ui/react';
 import { InfoIcon, SearchIcon } from '@chakra-ui/icons';
 import { Player, Position } from '../../../types/player';
@@ -43,6 +44,11 @@ interface RosterPanelProps {
    * Currently active position (for highlighting/filtering)
    */
   activePosition?: Position;
+  
+  /**
+   * Whether to use compact mode (smaller size for header display)
+   */
+  isCompact?: boolean;
 }
 
 /**
@@ -53,7 +59,8 @@ const RosterPanel: React.FC<RosterPanelProps> = ({
   lineup,
   activeInning,
   onPlayerSelect,
-  activePosition
+  activePosition,
+  isCompact = false
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const activePlayers = players.filter(player => player.active);
@@ -124,6 +131,22 @@ const RosterPanel: React.FC<RosterPanelProps> = ({
       </Flex>
     </Box>
   );
+
+  // Render different layouts based on compact mode
+  if (isCompact) {
+    return (
+      <Box position="relative">
+        <Button 
+          size="sm" 
+          rightIcon={<InfoIcon />} 
+          onClick={() => {}} // This would toggle a roster dropdown in a real implementation
+          colorScheme="blue"
+        >
+          Available Players ({players.length})
+        </Button>
+      </Box>
+    );
+  }
 
   return (
     <Box 
