@@ -107,6 +107,37 @@ export const STORAGE_KEYS = {
         return false;
       }
     }
+    
+    /**
+     * Get all items from localStorage
+     */
+    public getAllItems(): Record<string, any> {
+      if (!this.isAvailable) return {};
+      
+      try {
+        const items: Record<string, any> = {};
+        
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          
+          if (key) {
+            const value = localStorage.getItem(key);
+            if (value) {
+              try {
+                items[key] = JSON.parse(value);
+              } catch {
+                items[key] = value;
+              }
+            }
+          }
+        }
+        
+        return items;
+      } catch (e) {
+        console.error('Error getting all items from localStorage:', e);
+        return {};
+      }
+    }
   
     // Helper methods for specific entities
     

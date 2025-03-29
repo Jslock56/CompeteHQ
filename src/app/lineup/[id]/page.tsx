@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import NextLink from 'next/link';
 import {
@@ -14,30 +14,37 @@ import {
   AlertIcon,
   Spinner,
   HStack,
+  VStack,
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
-  Tab,
-  TabList,
-  TabPanel,
-  TabPanels,
-  Tabs,
+  Grid,
+  GridItem,
+  Badge,
+  Card,
+  CardBody,
+  CardHeader,
+  Divider,
+  Tag,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
   useColorModeValue
 } from '@chakra-ui/react';
 import { ChevronRightIcon, EditIcon } from '@chakra-ui/icons';
-import { FaPrint } from 'react-icons/fa';
 import { withTeam } from '@/contexts/team-context';
-import { Lineup } from '@/types/lineup';
+import { Lineup, Position } from '@/types/lineup';
 import { Player } from '@/types/player';
-import { Game } from '@/types/game';
 import { storageService } from '@/services/storage/enhanced-storage';
-import { getFairPlayIssues } from '@/utils/lineup-utils';
-import LineupViewGrid from '../../../components/lineup/lineup-view-grid';
+import PositionBadge from '@/components/common/position-badge';
 
 /**
- * Page for viewing an existing lineup
+ * View a field position lineup
  */
-function LineupDetailPage() {
+function LineupViewPage() {
   const params = useParams();
   const router = useRouter();
   
@@ -46,12 +53,9 @@ function LineupDetailPage() {
   
   // State
   const [lineup, setLineup] = useState<Lineup | null>(null);
-  const [game, setGame] = useState<Game | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [fairPlayIssues, setFairPlayIssues] = useState<string[]>([]);
-  const [currentInning, setCurrentInning] = useState<number>(1);
   
   // Load lineup data
   useEffect(() => {
@@ -73,19 +77,9 @@ function LineupDetailPage() {
         
         setLineup(lineupData);
         
-        // Load associated game
-        const gameData = await storageService.game.getGame(lineupData.gameId);
-        setGame(gameData);
-        
         // Load team players
         const teamPlayers = await storageService.player.getPlayersByTeam(lineupData.teamId);
         setPlayers(teamPlayers);
-        
-        // Check for fair play issues
-        if (lineupData && teamPlayers.length > 0) {
-          const issues = getFairPlayIssues(lineupData, teamPlayers);
-          setFairPlayIssues(issues);
-        }
       } catch (err) {
         setError(`Failed to load lineup: ${String(err)}`);
       } finally {
@@ -96,19 +90,41 @@ function LineupDetailPage() {
     loadData();
   }, [lineupId]);
   
-  // Handle print action
-  const handlePrint = () => {
-    window.print();
+  // Get the player assigned to a position
+  const getPlayerForPosition = (position: Position): Player | undefined => {
+    if (!lineup) return undefined;
+    
+    // For field-position lineups, they always have a single inning
+    const inning = lineup.innings[0];
+    const assignment = inning.positions.find(pos => pos.position === position);
+    
+    if (!assignment || !assignment.playerId) return undefined;
+    
+    return players.find(player => player.id === assignment.playerId);
+  };
+  
+  // Get the unassigned (bench) players
+  const getBenchPlayers = (): Player[] => {
+    if (!lineup) return [];
+    
+    // For field-position lineups, they always have a single inning
+    const inning = lineup.innings[0];
+    const assignedPlayerIds = inning.positions
+      .filter(pos => pos.playerId)
+      .map(pos => pos.playerId);
+    
+    return players.filter(player => !assignedPlayerIds.includes(player.id));
   };
   
   // UI colors
   const headerBg = useColorModeValue('gray.50', 'gray.700');
-  const alertBg = useColorModeValue('yellow.100', 'yellow.800');
-  const alertBorderColor = useColorModeValue('yellow.200', 'yellow.700');
+  const positionBgColor = useColorModeValue('white', 'gray.700');
+  const outfieldColor = useColorModeValue('green.50', 'green.900');
+  const infieldColor = useColorModeValue('orange.50', 'orange.900');
   
   if (isLoading) {
     return (
-      <Container maxW="5xl" py={8}>
+      <Container maxW="6xl" py={8}>
         <Flex justify="center" align="center" minH="60vh" direction="column">
           <Spinner size="xl" color="primary.500" thickness="4px" speed="0.65s" />
           <Text mt={4} color="gray.600">Loading lineup data...</Text>
@@ -117,23 +133,25 @@ function LineupDetailPage() {
     );
   }
   
-  if (error || !lineup || !game) {
+  if (error || !lineup) {
     return (
-      <Container maxW="5xl" py={8}>
+      <Container maxW="6xl" py={8}>
         <Alert status="error" borderRadius="md" mb={6}>
           <AlertIcon />
           {error || 'Failed to load lineup data'}
         </Alert>
         
-        <Button colorScheme="primary" variant="link" onClick={() => router.push('/games')}>
-          Go Back to Games
+        <Button colorScheme="primary" variant="link" onClick={() => router.push('/lineup/dashboard')}>
+          Go Back to Lineups
         </Button>
       </Container>
     );
   }
   
+  const benchPlayers = getBenchPlayers();
+  
   return (
-    <Container maxW="5xl" py={8}>
+    <Container maxW="6xl" py={8}>
       {/* Breadcrumbs */}
       <Breadcrumb 
         separator={<ChevronRightIcon color="gray.500" />} 
@@ -141,17 +159,12 @@ function LineupDetailPage() {
         fontSize="sm"
       >
         <BreadcrumbItem>
-          <BreadcrumbLink as={NextLink} href="/games" color="gray.500">
-            Games
-          </BreadcrumbLink>
-        </BreadcrumbItem>
-        <BreadcrumbItem>
-          <BreadcrumbLink as={NextLink} href={`/games/${game.id}`} color="gray.500">
-            vs. {game.opponent}
+          <BreadcrumbLink as={NextLink} href="/lineup/dashboard" color="gray.500">
+            Lineups
           </BreadcrumbLink>
         </BreadcrumbItem>
         <BreadcrumbItem isCurrentPage>
-          <Text color="gray.500">Lineup</Text>
+          <Text color="gray.500">{lineup.name}</Text>
         </BreadcrumbItem>
       </Breadcrumb>
       
@@ -163,26 +176,23 @@ function LineupDetailPage() {
         mb={8}
       >
         <Box mb={{ base: 4, md: 0 }}>
-          <Heading size="lg" mb={1}>
-            Lineup: vs. {game.opponent}
+          <Heading size="lg" mb={1} display="flex" alignItems="center">
+            {lineup.name}
+            {lineup.isDefault && (
+              <Badge colorScheme="yellow" ml={2}>Default</Badge>
+            )}
           </Heading>
           <Text color="gray.600">
-            {new Date(game.date).toLocaleDateString()} • {game.location} • {game.innings} innings
+            {lineup.type === 'competitive' ? 'Competitive' : 
+             lineup.type === 'developmental' ? 'Developmental' : 'Standard'} Lineup • 
+            Created {new Date(lineup.createdAt).toLocaleDateString()}
           </Text>
         </Box>
         
         <HStack spacing={3}>
-          <Button
-            leftIcon={<FaPrint />}
-            colorScheme="blue"
-            variant="outline"
-            onClick={handlePrint}
-          >
-            Print
-          </Button>
           <Button 
             as={NextLink}
-            href={`/lineup/edit/${lineup.id}`}
+            href={`/lineup/${lineup.id}/edit`}
             leftIcon={<EditIcon />}
             colorScheme="primary"
           >
@@ -191,101 +201,116 @@ function LineupDetailPage() {
         </HStack>
       </Flex>
       
-      {/* Fair Play Issues Alert */}
-      {fairPlayIssues.length > 0 && (
-        <Alert
-          status="warning"
-          variant="subtle"
-          bg={alertBg}
-          borderWidth="1px"
-          borderColor={alertBorderColor}
-          borderRadius="md"
-          mb={6}
-        >
-          <AlertIcon />
-          <Box>
-            <Text fontWeight="medium">Fair Play Issues</Text>
-            <Text fontSize="sm">
-              This lineup has {fairPlayIssues.length} fair play issues. Consider adjusting for better balance.
-            </Text>
-          </Box>
-        </Alert>
-      )}
-      
-      {/* Lineup Tabs */}
-      <Box 
-        bg="white" 
-        shadow="sm" 
-        borderRadius="lg" 
-        overflow="hidden" 
-        borderWidth="1px"
-        borderColor="gray.200"
+      {/* Lineup Display */}
+      <Grid
+        templateColumns={{ base: "1fr", lg: "3fr 1fr" }}
+        gap={6}
         mb={6}
       >
-        <Tabs 
-          variant="enclosed" 
-          colorScheme="primary" 
-          isLazy
-          onChange={(index) => setCurrentInning(index + 1)}
-        >
-          <TabList bg={headerBg}>
-            {lineup.innings.map((inning) => (
-              <Tab key={inning.inning}>Inning {inning.inning}</Tab>
-            ))}
-          </TabList>
-          
-          <TabPanels>
-            {lineup.innings.map((inning) => (
-              <TabPanel key={inning.inning} p={0}>
-                <LineupViewGrid 
-                  lineup={lineup}
-                  currentInning={inning.inning}
-                  players={players}
-                />
-              </TabPanel>
-            ))}
-          </TabPanels>
-        </Tabs>
-      </Box>
-      
-      {/* Lineup Summary and Analysis (optional) */}
-      <Box 
-        bg="white" 
-        shadow="sm" 
-        borderRadius="lg" 
-        overflow="hidden" 
-        borderWidth="1px"
-        borderColor="gray.200"
-        p={6}
-      >
-        <Heading size="md" mb={4}>Lineup Summary</Heading>
-        <Text>
-          This lineup includes {players.filter(player => 
-            lineup.innings.some(inning => 
-              inning.positions.some(pos => pos.playerId === player.id)
-            )
-          ).length} players across {lineup.innings.length} innings.
-        </Text>
+        {/* Positions Grid */}
+        <GridItem>
+          <Card>
+            <CardHeader bg={headerBg} py={3} px={4}>
+              <Heading size="md">Field Positions</Heading>
+            </CardHeader>
+            
+            <CardBody p={4}>
+              {/* Lineup Table */}
+              <Table variant="simple" size="sm">
+                <Thead bg={headerBg}>
+                  <Tr>
+                    <Th width="100px">Position</Th>
+                    <Th>Player</Th>
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  {(['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'] as Position[]).map(position => {
+                    const player = getPlayerForPosition(position);
+                    
+                    return (
+                      <Tr key={position}>
+                        <Td>
+                          <PositionBadge position={position} />
+                        </Td>
+                        <Td>
+                          {player ? (
+                            <Flex align="center">
+                              <Text fontWeight="medium">
+                                #{player.jerseyNumber} {player.firstName} {player.lastName}
+                              </Text>
+                              
+                              {/* Position badge for player */}
+                              {player.primaryPositions.includes(position) ? (
+                                <Badge colorScheme="green" ml={2} fontSize="xs">Primary</Badge>
+                              ) : player.secondaryPositions.includes(position) ? (
+                                <Badge colorScheme="blue" ml={2} fontSize="xs">Secondary</Badge>
+                              ) : (
+                                <Badge colorScheme="yellow" ml={2} fontSize="xs">New</Badge>
+                              )}
+                            </Flex>
+                          ) : (
+                            <Text color="gray.500">
+                              (Empty)
+                            </Text>
+                          )}
+                        </Td>
+                      </Tr>
+                    );
+                  })}
+                </Tbody>
+              </Table>
+            </CardBody>
+          </Card>
+        </GridItem>
         
-        {fairPlayIssues.length > 0 ? (
-          <Alert status="warning" variant="subtle" mt={4}>
-            <AlertIcon />
-            <Text fontSize="sm">
-              There are some fair play concerns with this lineup. Consider reviewing the issues
-              and adjusting player positions for more balanced participation.
-            </Text>
-          </Alert>
-        ) : (
-          <Alert status="success" variant="subtle" mt={4}>
-            <AlertIcon />
-            <Text fontSize="sm">
-              This lineup follows fair play principles with balanced position assignments.
-            </Text>
-          </Alert>
-        )}
-      </Box>
+        {/* Bench List */}
+        <GridItem>
+          <Card height="100%">
+            <CardHeader bg={headerBg} py={3} px={4}>
+              <Heading size="md">Bench</Heading>
+            </CardHeader>
+            
+            <CardBody p={4}>
+              {benchPlayers.length === 0 ? (
+                <Text color="gray.500" textAlign="center" py={4}>
+                  No players on the bench
+                </Text>
+              ) : (
+                <VStack spacing={3} align="stretch">
+                  {benchPlayers.map(player => (
+                    <Flex 
+                      key={player.id} 
+                      p={2} 
+                      bg="gray.50" 
+                      borderRadius="md"
+                      align="center"
+                    >
+                      <Flex
+                        justify="center"
+                        align="center"
+                        bg="gray.200"
+                        borderRadius="full"
+                        boxSize="30px"
+                        mr={2}
+                        fontWeight="bold"
+                        fontSize="sm"
+                      >
+                        {player.jerseyNumber}
+                      </Flex>
+                      
+                      <Text>
+                        {player.firstName} {player.lastName}
+                      </Text>
+                    </Flex>
+                  ))}
+                </VStack>
+              )}
+            </CardBody>
+          </Card>
+        </GridItem>
+      </Grid>
     </Container>
   );
 }
 
-export default withTeam(LineupDetailPage);
+export default withTeam(LineupViewPage);

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Box,
@@ -67,6 +67,23 @@ const TeamForm: React.FC<TeamFormProps> = ({
   const [isPublic, setIsPublic] = useState(initialTeam?.isPublic !== false); // Default to true
   const [joinRequiresApproval, setJoinRequiresApproval] = useState(initialTeam?.joinRequiresApproval !== false); // Default to true
   
+  // Parse existing season value on initial load
+  useEffect(() => {
+    if (initialTeam?.season) {
+      // Handle "Year-Round" special case
+      if (initialTeam.season === 'Year-Round') {
+        setSelectedSeasonType('Year-Round');
+      } else {
+        // Parse pattern like "Spring 2025"
+        const match = initialTeam.season.match(/^(\w+)\s+(\d{4})$/);
+        if (match) {
+          setSelectedSeasonType(match[1]); // Season name
+          setSelectedYear(match[2]);       // Year
+        }
+      }
+    }
+  }, [initialTeam]);
+  
   // Validation state
   const [errors, setErrors] = useState<{
     name?: string;
@@ -86,35 +103,54 @@ const TeamForm: React.FC<TeamFormProps> = ({
   
   // Age group options with more choices
   const ageGroups = [
-    { value: '6U', label: '6 & Under (T-Ball)' },
-    { value: '8U', label: '8 & Under (Coach Pitch)' },
+    { value: 'T-Ball', label: 'T-Ball' },
+    { value: 'Coach Pitch', label: 'Coach Pitch' },
+    { value: '6U', label: '6 & Under' },
+    { value: '7U', label: '7 & Under' },
+    { value: '8U', label: '8 & Under' },
     { value: '9U', label: '9 & Under' },
-    { value: '10U', label: '10 & Under (Minors)' },
+    { value: '10U', label: '10 & Under' },
     { value: '11U', label: '11 & Under' },
-    { value: '12U', label: '12 & Under (Little League)' },
+    { value: '12U', label: '12 & Under' },
     { value: '13U', label: '13 & Under' },
-    { value: '14U', label: '14 & Under (Junior League)' },
-    { value: '16U', label: '16 & Under (Senior League)' },
-    { value: 'HS-JV', label: 'High School JV' },
-    { value: 'HS-V', label: 'High School Varsity' },
-    { value: 'College', label: 'College' },
-    { value: 'Adult', label: 'Adult League' }
+    { value: '14U', label: '14 & Under' },
+    { value: '15U', label: '15 & Under' },
+    { value: '16U', label: '16 & Under' },
+    { value: 'High School', label: 'High School' },
+    { value: 'JV', label: 'JV (Junior Varsity)' },
+    { value: 'Varsity', label: 'Varsity' },
+    { value: 'College', label: 'College' }
   ];
   
-  // Season options
+  // Year options
   const yearNow = new Date().getFullYear();
-  const yearNext = yearNow + 1;
-  const seasonOptions = [
-    { value: `Spring ${yearNow}`, label: `Spring ${yearNow}` },
-    { value: `Summer ${yearNow}`, label: `Summer ${yearNow}` },
-    { value: `Fall ${yearNow}`, label: `Fall ${yearNow}` },
-    { value: `Winter ${yearNow}-${yearNext}`, label: `Winter ${yearNow}-${yearNext}` },
-    { value: `Spring ${yearNext}`, label: `Spring ${yearNext}` },
-    { value: `Summer ${yearNext}`, label: `Summer ${yearNext}` },
-    { value: `Fall ${yearNext}`, label: `Fall ${yearNext}` },
-    { value: `Winter ${yearNext}-${yearNext+1}`, label: `Winter ${yearNext}-${yearNext+1}` },
-    { value: 'Year-Round', label: 'Year-Round Program' }
+  const yearOptions = [
+    { value: yearNow.toString(), label: yearNow.toString() },
+    { value: (yearNow + 1).toString(), label: (yearNow + 1).toString() },
+    { value: (yearNow + 2).toString(), label: (yearNow + 2).toString() }
   ];
+  
+  // Season options (separate from year)
+  const seasonTypes = [
+    { value: 'Spring', label: 'Spring' },
+    { value: 'Summer', label: 'Summer' },
+    { value: 'Fall', label: 'Fall' },
+    { value: 'Winter', label: 'Winter' },
+    { value: 'Year-Round', label: 'Year-Round' }
+  ];
+  
+  // State for the separate year component
+  const [selectedYear, setSelectedYear] = useState(yearNow.toString());
+  const [selectedSeasonType, setSelectedSeasonType] = useState('');
+  
+  // Update the season value when either year or season type changes
+  useEffect(() => {
+    if (selectedSeasonType === 'Year-Round') {
+      setSeason('Year-Round');
+    } else if (selectedSeasonType) {
+      setSeason(`${selectedSeasonType} ${selectedYear}`);
+    }
+  }, [selectedYear, selectedSeasonType]);
   
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
@@ -441,21 +477,45 @@ const TeamForm: React.FC<TeamFormProps> = ({
             {errors.ageGroup && <FormErrorMessage>{errors.ageGroup}</FormErrorMessage>}
           </FormControl>
           
-          {/* Season */}
+          {/* Season - Split into Year and Season Type */}
           <FormControl isInvalid={!!errors.season} isRequired>
-            <FormLabel htmlFor="season">Season</FormLabel>
-            <Select
-              id="season"
-              value={season}
-              onChange={(e) => setSeason(e.target.value)}
-              placeholder="Select Season"
-            >
-              {seasonOptions.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
+            <FormLabel>Season</FormLabel>
+            <HStack spacing={4}>
+              {/* Year Dropdown */}
+              <FormControl>
+                <FormLabel htmlFor="year" fontSize="sm">Year</FormLabel>
+                <Select
+                  id="year"
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(e.target.value)}
+                >
+                  {yearOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+              </FormControl>
+              
+              {/* Season Type Dropdown */}
+              <FormControl>
+                <FormLabel htmlFor="seasonType" fontSize="sm">Season</FormLabel>
+                <Select
+                  id="seasonType"
+                  value={selectedSeasonType}
+                  onChange={(e) => setSelectedSeasonType(e.target.value)}
+                  placeholder="Select Season"
+                >
+                  {seasonTypes.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+              </FormControl>
+            </HStack>
+            {/* Hidden field for the combined season value */}
+            <Input type="hidden" value={season} id="season" />
             {errors.season && <FormErrorMessage>{errors.season}</FormErrorMessage>}
           </FormControl>
           

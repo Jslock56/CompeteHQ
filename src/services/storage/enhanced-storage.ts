@@ -97,7 +97,7 @@ export const teamStorage = {
   /**
    * Set the current team ID
    */
-  setCurrentTeamId(teamId: string | null): boolean {
+  setCurrentTeam(teamId: string | null): boolean {
     return localStorageService.setCurrentTeam(teamId);
   }
 };
@@ -305,17 +305,92 @@ export const lineupStorage = {
     
     return null;
   },
+  
+  /**
+   * Get all non-game lineups for a team
+   */
+  getNonGameLineupsByTeam(teamId: string): Lineup[] {
+    // Get all lineup keys
+    const allLineups = localStorageService.getAllItems();
+    const lineups: Lineup[] = [];
+    
+    // Filter for lineups that belong to this team and don't have a gameId
+    for (const key in allLineups) {
+      if (key.startsWith(STORAGE_KEYS.LINEUP_PREFIX)) {
+        const lineup = allLineups[key] as Lineup;
+        if (lineup.teamId === teamId && !lineup.gameId) {
+          lineups.push(lineup);
+        }
+      }
+    }
+    
+    return lineups;
+  },
+  
+  /**
+   * Get the default lineup for a team
+   */
+  getDefaultTeamLineup(teamId: string): Lineup | null {
+    // Get all lineup keys
+    const allLineups = localStorageService.getAllItems();
+    
+    // Find the default lineup for this team
+    for (const key in allLineups) {
+      if (key.startsWith(STORAGE_KEYS.LINEUP_PREFIX)) {
+        const lineup = allLineups[key] as Lineup;
+        if (lineup.teamId === teamId && lineup.isDefault && !lineup.gameId) {
+          return lineup;
+        }
+      }
+    }
+    
+    return null;
+  },
+  
+  /**
+   * Set a lineup as the default for a team
+   */
+  setDefaultTeamLineup(lineupId: string, teamId: string): boolean {
+    // Get all lineup keys
+    const allLineups = localStorageService.getAllItems();
+    
+    // First, unset any existing default
+    for (const key in allLineups) {
+      if (key.startsWith(STORAGE_KEYS.LINEUP_PREFIX)) {
+        const lineup = allLineups[key] as Lineup;
+        if (lineup.teamId === teamId && lineup.isDefault && !lineup.gameId) {
+          // Unset default
+          lineup.isDefault = false;
+          localStorageService.setItem<Lineup>(key, lineup);
+        }
+      }
+    }
+    
+    // Set the new default
+    const lineup = this.getLineup(lineupId);
+    if (lineup && lineup.teamId === teamId) {
+      lineup.isDefault = true;
+      return localStorageService.setItem<Lineup>(
+        `${STORAGE_KEYS.LINEUP_PREFIX}${lineupId}`, 
+        lineup
+      );
+    }
+    
+    return false;
+  },
 
   /**
    * Save a lineup
    */
   saveLineup(lineup: Lineup): boolean {
     // Update the game to reference this lineup if needed
-    const game = gameStorage.getGame(lineup.gameId);
-    
-    if (game && !game.lineupId) {
-      game.lineupId = lineup.id;
-      gameStorage.saveGame(game);
+    if (lineup.gameId) {
+      const game = gameStorage.getGame(lineup.gameId);
+      
+      if (game && !game.lineupId) {
+        game.lineupId = lineup.id;
+        gameStorage.saveGame(game);
+      }
     }
     
     // Save the lineup
@@ -332,12 +407,14 @@ export const lineupStorage = {
     const lineup = this.getLineup(lineupId);
     
     if (lineup) {
-      // Update the game to remove the lineup reference
-      const game = gameStorage.getGame(lineup.gameId);
-      
-      if (game && game.lineupId === lineupId) {
-        game.lineupId = undefined;
-        gameStorage.saveGame(game);
+      // Update the game to remove the lineup reference (if it's a game lineup)
+      if (lineup.gameId) {
+        const game = gameStorage.getGame(lineup.gameId);
+        
+        if (game && game.lineupId === lineupId) {
+          game.lineupId = undefined;
+          gameStorage.saveGame(game);
+        }
       }
     }
     

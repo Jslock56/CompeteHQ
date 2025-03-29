@@ -141,10 +141,13 @@ export function usePlayers(): UsePlayersResult {
     
     const now = Date.now();
     
+    // Create new player for local storage
     const newPlayer: Player = {
       id: uuidv4(),
       teamId: currentTeam.id,
       ...playerData,
+      // Ensure name is properly formed for API
+      name: `${playerData.firstName} ${playerData.lastName}`.trim(),
       createdAt: now,
       updatedAt: now
     };
@@ -157,14 +160,33 @@ export function usePlayers(): UsePlayersResult {
         throw new Error('Failed to save player to local storage');
       }
       
-      // Try saving to API/MongoDB
+      // Try saving to API/MongoDB - create a compatible object for the API
       try {
+        // Create an API-compatible player object
+        const apiPlayer = {
+          id: newPlayer.id,
+          teamId: newPlayer.teamId,
+          name: newPlayer.name, // Combined name for API
+          firstName: newPlayer.firstName,
+          lastName: newPlayer.lastName,
+          jerseyNumber: newPlayer.jerseyNumber,
+          primaryPositions: newPlayer.primaryPositions,
+          secondaryPositions: newPlayer.secondaryPositions,
+          notes: newPlayer.notes,
+          battingOrder: newPlayer.battingOrder,
+          active: newPlayer.active,
+          createdAt: newPlayer.createdAt,
+          updatedAt: newPlayer.updatedAt
+        };
+        
+        console.log('Sending player to API:', apiPlayer);
+        
         const response = await fetch('/api/teams/players', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(newPlayer),
+          body: JSON.stringify(apiPlayer),
         });
         
         const data = await response.json();

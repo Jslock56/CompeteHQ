@@ -12,6 +12,7 @@ import {
   DrawerOverlay,
   DrawerContent,
   DrawerCloseButton,
+  Text,
 } from "@chakra-ui/react";
 import { HamburgerIcon } from '@chakra-ui/icons';
 import { useTeamContext } from "../../contexts/team-context";
@@ -19,6 +20,7 @@ import { useAuth } from "../../contexts/auth-context";
 import Header from "../common/header";
 import Navigation from "../common/navigation";
 import WidgetsSidebar from "../common/widgets-sidebar";
+import Logo from "../common/logo";
 
 export function AppLayout({ children }: { children: ReactNode }) {
   // Use Chakra's useDisclosure for controlling drawer/sidebar states
@@ -132,9 +134,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
         px="4"
         fontSize="xs"
         color="gray.500"
-        textAlign="center"
       >
-        © {new Date().getFullYear()} competeHQ
+        <Flex justify="center" align="center" gap={2}>
+          <Logo showText={false} size="sm" />
+          <Text>© {new Date().getFullYear()} competeHQ</Text>
+        </Flex>
       </Box>
     </Flex>
   );

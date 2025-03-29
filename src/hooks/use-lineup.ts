@@ -1,23 +1,21 @@
 /**
  * Custom hook for lineup management
+ * Provides methods for creating, reading, updating lineups
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { storageService } from '../services/storage/enhanced-storage';
 import { Lineup, LineupInning, Position, PositionAssignment } from '../types/lineup';
 import { Player } from '../types/player';
-import { storageService } from '../services/storage/enhanced-storage';
-import { 
-  createDefaultLineup, // Changed from createEmptyLineup
-  getFairPlayIssues, // Changed from checkLineupFairPlay
-  copyInningPositions 
-} from '../utils/lineup-utils';
+import { createDefaultLineup, createFieldPositionLineup, getFairPlayIssues } from '../utils/lineup-utils';
 
+// Props for useLineup hook
 interface UseLineupProps {
   /**
-   * Game ID for this lineup
+   * Game ID (if this is a game lineup)
    */
-  gameId: string;
+  gameId?: string;
   
   /**
    * Team ID
@@ -25,9 +23,9 @@ interface UseLineupProps {
   teamId: string;
   
   /**
-   * Number of innings in the game
+   * Number of innings (for a game lineup)
    */
-  innings: number;
+  innings?: number;
   
   /**
    * Initial lineup data (for editing)
@@ -35,11 +33,22 @@ interface UseLineupProps {
   initialLineup?: Lineup;
   
   /**
-   * Available players for the team
+   * Available players
    */
   players: Player[];
+  
+  /**
+   * Lineup name (for non-game lineups)
+   */
+  name?: string;
+  
+  /**
+   * Lineup type (for non-game lineups)
+   */
+  type?: 'competitive' | 'developmental';
 }
 
+// Return type for useLineup hook
 interface UseLineupResult {
   /**
    * Current lineup data
@@ -47,32 +56,42 @@ interface UseLineupResult {
   lineup: Lineup;
   
   /**
-   * Currently selected inning (1-based)
+   * Assign a player to a position in a specific inning
    */
-  currentInning: number;
+  assignPlayerToPosition: (inningNumber: number, position: Position, playerId: string) => void;
   
   /**
-   * Set the current inning
-   */
-  setCurrentInning: (inning: number) => void;
-  
-  /**
-   * Assign a player to a position
-   */
-  assignPlayerToPosition: (inning: number, position: Position, playerId: string) => void;
-  
-  /**
-   * Copy positions from the previous inning
+   * Copy position assignments from the previous inning to a target inning
    */
   copyFromPreviousInning: (targetInning: number) => void;
   
   /**
-   * Validate the lineup and return any issues
+   * Swap two players' positions within an inning
+   */
+  swapPlayerPositions: (inningNumber: number, position1: Position, position2: Position) => void;
+  
+  /**
+   * Swap a player with another player across any position/inning
+   */
+  swapPlayers: (inning1: number, position1: Position, inning2: number, position2: Position) => void;
+  
+  /**
+   * Set lineup name (for non-game lineups)
+   */
+  setLineupName: (name: string) => void;
+  
+  /**
+   * Set lineup type (for non-game lineups)
+   */
+  setLineupType: (type: 'competitive' | 'developmental') => void;
+  
+  /**
+   * Validate the lineup and get all fair play issues
    */
   validateLineup: () => string[];
   
   /**
-   * Save the lineup
+   * Save the lineup to storage
    */
   saveLineup: () => Promise<Lineup | null>;
   
@@ -80,199 +99,373 @@ interface UseLineupResult {
    * Current fair play issues
    */
   fairPlayIssues: string[];
-  
-  /**
-   * Whether the lineup has been modified
-   */
-  isModified: boolean;
 }
 
 /**
- * Custom hook for managing lineup state and operations
+ * Custom hook for managing a lineup
  */
 export const useLineup = ({
   gameId,
   teamId,
-  innings,
+  innings = 6,
   initialLineup,
-  players
+  players,
+  name,
+  type
 }: UseLineupProps): UseLineupResult => {
-  // Set up state
+  // Initialize lineup state
   const [lineup, setLineup] = useState<Lineup>(() => {
-    // If initial lineup is provided, use it
-    if (initialLineup) {
-      return initialLineup;
+    // Try to use initial lineup if provided
+    if (initialLineup) return initialLineup;
+    
+    // Try to load from storage if for a game
+    if (gameId) {
+      const existingLineup = storageService.lineup.getLineupByGame(gameId);
+      if (existingLineup) return existingLineup;
     }
     
-    // Otherwise, try to load from storage
-    const existingLineup = storageService.lineup.getLineupByGame(gameId);
-    if (existingLineup) {
-      return existingLineup;
+    // Create new lineup 
+    if (gameId) {
+      // Game lineup
+      return createDefaultLineup(teamId, gameId, innings);
+    } else {
+      // Field-position lineup
+      return createFieldPositionLineup(teamId, name || 'New Lineup', type || 'competitive');
     }
-    
-    // If no lineup exists, create an empty one
-    return createDefaultLineup(gameId, teamId, innings); // Changed from createEmptyLineup
   });
-  
-  // Track whether lineup has been modified
-  const [isModified, setIsModified] = useState(false);
-  
-  // Track current inning (1-based)
-  const [currentInning, setCurrentInning] = useState(1);
   
   // Track fair play issues
   const [fairPlayIssues, setFairPlayIssues] = useState<string[]>([]);
   
-  // Function to update the lineup and mark as modified
-  const updateLineup = useCallback((updatedLineup: Lineup) => {
-    setLineup(updatedLineup);
-    setIsModified(true);
-  }, []);
-  
-  // Get the data for a specific inning
-  const getInningData = useCallback((inningNumber: number): LineupInning => {
-    // Find existing inning data
-    const existingInning = lineup.innings.find(inning => inning.inning === inningNumber);
-    
-    // Return existing data or create new empty inning
-    return existingInning || { inning: inningNumber, positions: [] };
-  }, [lineup]);
+  // Find an inning by number
+  const findInning = useCallback((inningNumber: number): LineupInning | undefined => {
+    return lineup.innings.find(inning => inning.inning === inningNumber);
+  }, [lineup.innings]);
   
   // Assign a player to a position in a specific inning
   const assignPlayerToPosition = useCallback((
-    inningNumber: number,
-    position: Position,
+    inningNumber: number, 
+    position: Position, 
     playerId: string
   ) => {
-    // Get the current inning data
-    const inningData = getInningData(inningNumber);
-    
-    // Create updated positions array
-    let updatedPositions: PositionAssignment[];
-    
-    // If playerId is empty, remove the position assignment
-    if (playerId === '') {
-      updatedPositions = inningData.positions.filter(p => p.position !== position);
-    } else {
-      // Check if position is already assigned
-      const existingAssignment = inningData.positions.find(p => p.position === position);
+    setLineup(currentLineup => {
+      // Find the target inning
+      const inningIndex = currentLineup.innings.findIndex(inning => inning.inning === inningNumber);
       
-      if (existingAssignment) {
-        // Update existing assignment
-        updatedPositions = inningData.positions.map(p =>
-          p.position === position ? { position, playerId } : p
-        );
+      if (inningIndex === -1) return currentLineup;
+      
+      // Create a new innings array
+      const newInnings = [...currentLineup.innings];
+      
+      // Create a new positions array for this inning
+      const newPositions = [...newInnings[inningIndex].positions];
+      
+      // Find the position index
+      const positionIndex = newPositions.findIndex(pos => pos.position === position);
+      
+      if (positionIndex === -1) {
+        // Position doesn't exist, add it
+        newPositions.push({ position, playerId });
       } else {
-        // Add new assignment
-        updatedPositions = [...inningData.positions, { position, playerId }];
+        // Update existing position
+        newPositions[positionIndex] = { position, playerId };
       }
-    }
-    
-    // Create updated inning data
-    const updatedInning: LineupInning = {
-      ...inningData,
-      positions: updatedPositions
-    };
-    
-    // Update lineup with new inning data
-    const updatedInnings = lineup.innings
-      .filter(inning => inning.inning !== inningNumber)
-      .concat(updatedInning);
-    
-    // Sort innings by inning number
-    updatedInnings.sort((a, b) => a.inning - b.inning);
-    
-    // Update lineup state
-    updateLineup({
-      ...lineup,
-      innings: updatedInnings,
-      updatedAt: Date.now()
+      
+      // Update the innings array
+      newInnings[inningIndex] = {
+        ...newInnings[inningIndex],
+        positions: newPositions
+      };
+      
+      // Return updated lineup
+      return {
+        ...currentLineup,
+        innings: newInnings,
+        updatedAt: Date.now()
+      };
     });
-  }, [lineup, getInningData, updateLineup]);
+  }, []);
   
-  // Copy positions from previous inning
+  // Copy assignments from previous inning
   const copyFromPreviousInning = useCallback((targetInning: number) => {
-    if (targetInning <= 1) return; // Can't copy if there's no previous inning
+    if (targetInning <= 1) return; // Can't copy to first inning
     
-    // Get previous inning data
-    const previousInning = getInningData(targetInning - 1);
-    
-    // Create new inning data by copying positions
-    const newInning = copyInningPositions(previousInning, targetInning);
-    
-    // Update lineup with new inning data
-    const updatedInnings = lineup.innings
-      .filter(inning => inning.inning !== targetInning)
-      .concat(newInning);
-    
-    // Sort innings by inning number
-    updatedInnings.sort((a, b) => a.inning - b.inning);
-    
-    // Update lineup state
-    updateLineup({
-      ...lineup,
-      innings: updatedInnings,
-      updatedAt: Date.now()
+    setLineup(currentLineup => {
+      // Find target and source innings
+      const targetInningIndex = currentLineup.innings.findIndex(inning => inning.inning === targetInning);
+      const sourceInningIndex = currentLineup.innings.findIndex(inning => inning.inning === targetInning - 1);
+      
+      if (targetInningIndex === -1 || sourceInningIndex === -1) return currentLineup;
+      
+      // Create a new innings array
+      const newInnings = [...currentLineup.innings];
+      
+      // Copy positions from source to target
+      newInnings[targetInningIndex] = {
+        ...newInnings[targetInningIndex],
+        positions: [...newInnings[sourceInningIndex].positions]
+      };
+      
+      // Return updated lineup
+      return {
+        ...currentLineup,
+        innings: newInnings,
+        updatedAt: Date.now()
+      };
     });
-  }, [lineup, getInningData, updateLineup]);
+  }, []);
   
-  // Validate the lineup
+  // Swap two positions within the same inning
+  const swapPlayerPositions = useCallback((
+    inningNumber: number,
+    position1: Position,
+    position2: Position
+  ) => {
+    setLineup(currentLineup => {
+      // Find the inning
+      const inningIndex = currentLineup.innings.findIndex(inning => inning.inning === inningNumber);
+      
+      if (inningIndex === -1) return currentLineup;
+      
+      // Get the inning
+      const inning = currentLineup.innings[inningIndex];
+      
+      // Find positions
+      const pos1Index = inning.positions.findIndex(pos => pos.position === position1);
+      const pos2Index = inning.positions.findIndex(pos => pos.position === position2);
+      
+      if (pos1Index === -1 || pos2Index === -1) return currentLineup;
+      
+      // Get player IDs
+      const player1Id = inning.positions[pos1Index].playerId;
+      const player2Id = inning.positions[pos2Index].playerId;
+      
+      // Create new positions array
+      const newPositions = [...inning.positions];
+      
+      // Swap players
+      newPositions[pos1Index] = { position: position1, playerId: player2Id };
+      newPositions[pos2Index] = { position: position2, playerId: player1Id };
+      
+      // Create new innings array
+      const newInnings = [...currentLineup.innings];
+      
+      // Update the inning
+      newInnings[inningIndex] = {
+        ...inning,
+        positions: newPositions
+      };
+      
+      // Return updated lineup
+      return {
+        ...currentLineup,
+        innings: newInnings,
+        updatedAt: Date.now()
+      };
+    });
+  }, []);
+  
+  // Swap two players across any position/inning
+  const swapPlayers = useCallback((
+    inning1: number,
+    position1: Position,
+    inning2: number,
+    position2: Position
+  ) => {
+    setLineup(currentLineup => {
+      // Find innings
+      const inning1Index = currentLineup.innings.findIndex(inning => inning.inning === inning1);
+      const inning2Index = currentLineup.innings.findIndex(inning => inning.inning === inning2);
+      
+      if (inning1Index === -1 || inning2Index === -1) return currentLineup;
+      
+      // Get innings
+      const inning1Data = currentLineup.innings[inning1Index];
+      const inning2Data = currentLineup.innings[inning2Index];
+      
+      // Find positions
+      const pos1Index = inning1Data.positions.findIndex(pos => pos.position === position1);
+      const pos2Index = inning2Data.positions.findIndex(pos => pos.position === position2);
+      
+      if (pos1Index === -1 || pos2Index === -1) return currentLineup;
+      
+      // Get player IDs
+      const player1Id = inning1Data.positions[pos1Index].playerId;
+      const player2Id = inning2Data.positions[pos2Index].playerId;
+      
+      // Create new innings array
+      const newInnings = [...currentLineup.innings];
+      
+      // Create new positions arrays
+      const newPositions1 = [...inning1Data.positions];
+      const newPositions2 = [...inning2Data.positions];
+      
+      // Swap players
+      newPositions1[pos1Index] = { position: position1, playerId: player2Id };
+      newPositions2[pos2Index] = { position: position2, playerId: player1Id };
+      
+      // Update innings
+      newInnings[inning1Index] = {
+        ...inning1Data,
+        positions: newPositions1
+      };
+      
+      newInnings[inning2Index] = {
+        ...inning2Data,
+        positions: newPositions2
+      };
+      
+      // Return updated lineup
+      return {
+        ...currentLineup,
+        innings: newInnings,
+        updatedAt: Date.now()
+      };
+    });
+  }, []);
+  
+  // Set lineup name (for non-game lineups)
+  const setLineupName = useCallback((name: string) => {
+    setLineup(currentLineup => ({
+      ...currentLineup,
+      name,
+      updatedAt: Date.now()
+    }));
+  }, []);
+  
+  // Set lineup type (for non-game lineups)
+  const setLineupType = useCallback((type: 'competitive' | 'developmental') => {
+    setLineup(currentLineup => ({
+      ...currentLineup,
+      type,
+      updatedAt: Date.now()
+    }));
+  }, []);
+  
+  // Validate lineup and get fair play issues
   const validateLineup = useCallback((): string[] => {
-    // Run validation to check for fair play issues
-    const issues = getFairPlayIssues(lineup, players); // Changed from checkLineupFairPlay
-    
-    // Update fair play issues state
+    const issues = getFairPlayIssues(lineup, players);
     setFairPlayIssues(issues);
-    
     return issues;
   }, [lineup, players]);
   
-  // Save the lineup
+  // Save lineup
   const saveLineup = useCallback(async (): Promise<Lineup | null> => {
-    // Make sure lineup has an ID
-    let lineupToSave = lineup;
-    if (!lineupToSave.id) {
-      lineupToSave = {
-        ...lineup,
-        id: uuidv4()
-      };
-    }
-    
-    // Update timestamps
-    lineupToSave = {
-      ...lineupToSave,
+    // Ensure the lineup has an ID
+    const lineupToSave: Lineup = {
+      ...lineup,
+      id: lineup.id || uuidv4(),
       updatedAt: Date.now()
     };
     
     // Save to storage
     const success = storageService.lineup.saveLineup(lineupToSave);
     
-    if (!success) {
-      throw new Error('Failed to save lineup');
+    if (success) {
+      // Update local state
+      setLineup(lineupToSave);
+      return lineupToSave;
     }
     
-    // Update local state
-    setLineup(lineupToSave);
-    setIsModified(false);
-    
-    return lineupToSave;
+    return null;
   }, [lineup]);
-  
-  // Run validation whenever lineup changes
-  useEffect(() => {
-    validateLineup();
-  }, [lineup, validateLineup]);
   
   return {
     lineup,
-    currentInning,
-    setCurrentInning,
     assignPlayerToPosition,
     copyFromPreviousInning,
+    swapPlayerPositions,
+    swapPlayers,
+    setLineupName,
+    setLineupType,
     validateLineup,
     saveLineup,
-    fairPlayIssues,
-    isModified
+    fairPlayIssues
+  };
+};
+
+/**
+ * Hook for managing field-position lineups (non-game specific)
+ */
+export const useFieldPositionLineups = (teamId: string) => {
+  const [lineups, setLineups] = useState<Lineup[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Load lineups
+  const loadLineups = useCallback(async () => {
+    if (!teamId) return;
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // Get non-game lineups for this team
+      const teamLineups = await storageService.lineup.getNonGameLineupsByTeam(teamId);
+      setLineups(teamLineups);
+    } catch (err) {
+      setError(`Failed to load lineups: ${String(err)}`);
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [teamId]);
+  
+  // Set a lineup as the default
+  const setDefaultLineup = useCallback(async (lineupId: string): Promise<boolean> => {
+    if (!teamId) return false;
+    
+    try {
+      const success = await storageService.lineup.setDefaultTeamLineup(lineupId, teamId);
+      
+      if (success) {
+        // Update local state
+        setLineups(currentLineups => 
+          currentLineups.map(lineup => ({
+            ...lineup,
+            isDefault: lineup.id === lineupId
+          }))
+        );
+      }
+      
+      return success;
+    } catch (err) {
+      console.error(`Failed to set default lineup: ${String(err)}`);
+      return false;
+    }
+  }, [teamId]);
+  
+  // Delete a lineup
+  const deleteLineup = useCallback(async (lineupId: string): Promise<boolean> => {
+    try {
+      const success = await storageService.lineup.deleteLineup(lineupId);
+      
+      if (success) {
+        // Update local state
+        setLineups(currentLineups => 
+          currentLineups.filter(lineup => lineup.id !== lineupId)
+        );
+      }
+      
+      return success;
+    } catch (err) {
+      console.error(`Failed to delete lineup: ${String(err)}`);
+      return false;
+    }
+  }, []);
+  
+  // Load lineups on mount and when teamId changes
+  useEffect(() => {
+    loadLineups();
+  }, [loadLineups]);
+  
+  return {
+    lineups,
+    isLoading,
+    error,
+    loadLineups,
+    setDefaultLineup,
+    deleteLineup
   };
 };
 

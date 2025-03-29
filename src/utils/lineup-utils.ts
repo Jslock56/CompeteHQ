@@ -156,20 +156,49 @@ export const createDefaultInning = (inningNumber: number): LineupInning => {
  * Create a default lineup structure with a specified number of innings
  */
 export const createDefaultLineup = (
-  gameId: string, 
-  teamId: string, 
-  inningCount: number = 6
+  teamId: string,
+  gameId?: string,
+  inningCount: number = 6,
+  name?: string,
+  type?: 'competitive' | 'developmental'
 ): Lineup => {
   const now = Date.now();
   
   return {
     id: '', // Will be assigned when saved
-    gameId,
     teamId,
+    gameId,
+    name,
+    type,
     innings: Array.from({ length: inningCount }, (_, i) => createDefaultInning(i + 1)),
     status: 'draft',
     createdAt: now,
     updatedAt: now,
+    isDefault: false,
+  };
+};
+
+/**
+ * Create a defensive field-position lineup (non-game specific)
+ */
+export const createFieldPositionLineup = (
+  teamId: string,
+  name: string,
+  type: 'standard' | 'competitive' | 'developmental' = 'standard'
+): Lineup => {
+  const now = Date.now();
+  
+  // For field position lineup, we use just a single "inning"
+  return {
+    id: '', // Will be assigned when saved
+    teamId,
+    name,
+    type,
+    innings: [createDefaultInning(1)],
+    status: 'draft',
+    createdAt: now,
+    updatedAt: now,
+    isDefault: false,
   };
 };
 

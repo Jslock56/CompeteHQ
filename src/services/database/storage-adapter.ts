@@ -43,6 +43,9 @@ export interface StorageInterface {
   // Lineup operations
   getLineup(id: string): Promise<Lineup | null>;
   getLineupByGame(gameId: string): Promise<Lineup | null>;
+  getNonGameLineupsByTeam(teamId: string): Promise<Lineup[]>;
+  getDefaultTeamLineup(teamId: string): Promise<Lineup | null>;
+  setDefaultTeamLineup(lineupId: string, teamId: string): Promise<boolean>;
   saveLineup(lineup: Lineup): Promise<boolean>;
   deleteLineup(id: string): Promise<boolean>;
   
@@ -400,6 +403,55 @@ class StorageAdapter implements StorageInterface {
       } catch (error) {
         console.error('MongoDB error, falling back to localStorage:', error);
         return localStorageService.lineup.getLineupByGame(gameId);
+      }
+    }
+  }
+  
+  async getNonGameLineupsByTeam(teamId: string): Promise<Lineup[]> {
+    const offlineMode = await this.checkOfflineMode();
+    
+    if (offlineMode) {
+      return localStorageService.lineup.getNonGameLineupsByTeam(teamId);
+    } else {
+      try {
+        return await mongoDBService.getNonGameLineupsByTeam(teamId);
+      } catch (error) {
+        console.error('MongoDB error, falling back to localStorage:', error);
+        return localStorageService.lineup.getNonGameLineupsByTeam(teamId);
+      }
+    }
+  }
+  
+  async getDefaultTeamLineup(teamId: string): Promise<Lineup | null> {
+    const offlineMode = await this.checkOfflineMode();
+    
+    if (offlineMode) {
+      return localStorageService.lineup.getDefaultTeamLineup(teamId);
+    } else {
+      try {
+        return await mongoDBService.getDefaultTeamLineup(teamId);
+      } catch (error) {
+        console.error('MongoDB error, falling back to localStorage:', error);
+        return localStorageService.lineup.getDefaultTeamLineup(teamId);
+      }
+    }
+  }
+  
+  async setDefaultTeamLineup(lineupId: string, teamId: string): Promise<boolean> {
+    const offlineMode = await this.checkOfflineMode();
+    
+    // Always save to localStorage for offline access
+    const localSuccess = localStorageService.lineup.setDefaultTeamLineup(lineupId, teamId);
+    
+    if (offlineMode) {
+      return localSuccess;
+    } else {
+      try {
+        // Also save to MongoDB if online
+        return await mongoDBService.setDefaultTeamLineup(lineupId, teamId);
+      } catch (error) {
+        console.error('MongoDB error, default lineup only set locally:', error);
+        return localSuccess;
       }
     }
   }

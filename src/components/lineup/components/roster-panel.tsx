@@ -1,9 +1,21 @@
-import React from 'react';
-import { Box, Heading, Text, Flex, useColorModeValue, Tooltip, Icon, VStack } from '@chakra-ui/react';
-import { InfoIcon } from '@chakra-ui/icons';
-import { Player } from '../../types/player';
-import { Lineup } from '../../types/lineup';
-import { PositionBadge } from '../common/position-badge';
+import React, { useState } from 'react';
+import { 
+  Box, 
+  Heading, 
+  Text, 
+  Flex, 
+  useColorModeValue, 
+  Tooltip, 
+  Icon, 
+  VStack,
+  Input,
+  InputGroup,
+  InputLeftElement 
+} from '@chakra-ui/react';
+import { InfoIcon, SearchIcon } from '@chakra-ui/icons';
+import { Player, Position } from '../../../types/player';
+import { Lineup } from '../../../types/lineup';
+import PositionBadge from '../../common/position-badge';
 
 interface RosterPanelProps {
   /**
@@ -18,6 +30,7 @@ interface RosterPanelProps {
   
   /**
    * Currently active inning
+   * For field position lineups, this is always 1
    */
   activeInning: number;
   
@@ -25,6 +38,11 @@ interface RosterPanelProps {
    * Callback when a player is selected
    */
   onPlayerSelect: (playerId: string) => void;
+  
+  /**
+   * Currently active position (for highlighting/filtering)
+   */
+  activePosition?: Position;
 }
 
 /**
@@ -34,8 +52,10 @@ const RosterPanel: React.FC<RosterPanelProps> = ({
   players,
   lineup,
   activeInning,
-  onPlayerSelect
+  onPlayerSelect,
+  activePosition
 }) => {
+  const [searchQuery, setSearchQuery] = useState('');
   const activePlayers = players.filter(player => player.active);
   
   // Function to check if a player is already in the lineup for the active inning
@@ -52,11 +72,56 @@ const RosterPanel: React.FC<RosterPanelProps> = ({
   const cardBorderColor = useColorModeValue('gray.200', 'gray.600');
   const headerBg = useColorModeValue('gray.50', 'gray.700');
 
+  // Filter players based on search
+  const filteredPlayers = activePlayers.filter(player => {
+    if (!searchQuery.trim()) return true;
+    
+    const query = searchQuery.toLowerCase();
+    return (
+      player.firstName.toLowerCase().includes(query) ||
+      player.lastName.toLowerCase().includes(query) ||
+      player.jerseyNumber.toString().includes(query)
+    );
+  });
+  
+  // Sort by primary/secondary position match and jersey number
+  const sortedPlayers = [...filteredPlayers].sort((a, b) => {
+    if (activePosition) {
+      // Primary positions first
+      const aIsPrimary = a.primaryPositions.includes(activePosition);
+      const bIsPrimary = b.primaryPositions.includes(activePosition);
+      
+      if (aIsPrimary && !bIsPrimary) return -1;
+      if (!aIsPrimary && bIsPrimary) return 1;
+      
+      // Then secondary positions
+      const aIsSecondary = a.secondaryPositions.includes(activePosition);
+      const bIsSecondary = b.secondaryPositions.includes(activePosition);
+      
+      if (aIsSecondary && !bIsSecondary) return -1;
+      if (!aIsSecondary && bIsSecondary) return 1;
+    }
+    
+    // Then jersey number
+    return a.jerseyNumber - b.jerseyNumber;
+  });
+
   // Function to create position badges for tooltip
   const renderPositionBadges = (player: Player) => (
     <Box p={2}>
-      <Text fontWeight="semibold" fontSize="xs" mb={2}>Primary: {player.primaryPositions.join(', ')}</Text>
-      <Text fontWeight="semibold" fontSize="xs">Secondary: {player.secondaryPositions.join(', ')}</Text>
+      <Text fontWeight="semibold" fontSize="xs" mb={1}>Primary:</Text>
+      <Flex gap={1} wrap="wrap" mb={2}>
+        {player.primaryPositions.map(pos => (
+          <PositionBadge key={pos} position={pos} size="sm" />
+        ))}
+      </Flex>
+      
+      <Text fontWeight="semibold" fontSize="xs" mb={1}>Secondary:</Text>
+      <Flex gap={1} wrap="wrap">
+        {player.secondaryPositions.map(pos => (
+          <PositionBadge key={pos} position={pos} size="sm" />
+        ))}
+      </Flex>
     </Box>
   );
 
@@ -70,11 +135,26 @@ const RosterPanel: React.FC<RosterPanelProps> = ({
     >
       <Box p={2} bg={headerBg} borderBottomWidth="1px" borderColor={cardBorderColor}>
         <Heading size="xs">
-          Player Roster
+          Roster
         </Heading>
         <Text fontSize="xs" color="gray.500">
           Click to add
         </Text>
+      </Box>
+      
+      {/* Search input */}
+      <Box px={2} pt={2}>
+        <InputGroup size="xs">
+          <InputLeftElement pointerEvents="none">
+            <SearchIcon color="gray.400" fontSize="xs" />
+          </InputLeftElement>
+          <Input 
+            placeholder="Search roster..." 
+            size="xs"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </InputGroup>
       </Box>
       
       <VStack 
@@ -84,8 +164,10 @@ const RosterPanel: React.FC<RosterPanelProps> = ({
         spacing={0.5} 
         align="stretch"
       >
-        {activePlayers.map(player => {
+        {sortedPlayers.map(player => {
           const alreadyInInning = isPlayerInInning(player.id);
+          const isPrimary = activePosition && player.primaryPositions.includes(activePosition);
+          const isSecondary = activePosition && player.secondaryPositions.includes(activePosition);
           
           return (
             <Flex
@@ -93,7 +175,7 @@ const RosterPanel: React.FC<RosterPanelProps> = ({
               py={1}
               px={1.5}
               borderRadius="md"
-              bg={alreadyInInning ? 'gray.50' : cardBg}
+              bg={alreadyInInning ? 'gray.50' : isPrimary ? 'green.50' : isSecondary ? 'blue.50' : cardBg}
               borderWidth="1px"
               borderColor={alreadyInInning ? 'gray.200' : 'transparent'}
               align="center"
@@ -134,6 +216,17 @@ const RosterPanel: React.FC<RosterPanelProps> = ({
                 {player.lastName}, {player.firstName.charAt(0)}
               </Text>
               
+              {/* Position match indicator */}
+              {activePosition && (isPrimary || isSecondary) && (
+                <Box 
+                  w="6px" 
+                  h="6px" 
+                  borderRadius="full" 
+                  bg={isPrimary ? "green.500" : "blue.500"} 
+                  mr={1}
+                />
+              )}
+              
               {/* Info icon */}
               <Tooltip
                 label={renderPositionBadges(player)}
@@ -152,6 +245,12 @@ const RosterPanel: React.FC<RosterPanelProps> = ({
             </Flex>
           );
         })}
+        
+        {sortedPlayers.length === 0 && (
+          <Text fontSize="xs" color="gray.500" textAlign="center" py={4}>
+            No players found
+          </Text>
+        )}
       </VStack>
     </Box>
   );

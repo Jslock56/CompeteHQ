@@ -513,6 +513,75 @@ class MongoDBService {
     if (!this.lineupsCollection) throw new Error('Lineups collection is not initialized');
     return this.lineupsCollection.findOne({ gameId });
   }
+  
+  /**
+   * Get non-game lineups for a team
+   */
+  async getNonGameLineupsByTeam(teamId: string): Promise<Lineup[]> {
+    if (!this.lineupsCollection) throw new Error('Lineups collection is not initialized');
+    return this.lineupsCollection.find({ 
+      teamId,
+      gameId: { $exists: false } 
+    }).toArray();
+  }
+  
+  /**
+   * Get default lineup for a team
+   */
+  async getDefaultTeamLineup(teamId: string): Promise<Lineup | null> {
+    if (!this.lineupsCollection) throw new Error('Lineups collection is not initialized');
+    return this.lineupsCollection.findOne({ 
+      teamId, 
+      isDefault: true,
+      gameId: { $exists: false }
+    });
+  }
+  
+  /**
+   * Set a lineup as the default for a team
+   */
+  async setDefaultTeamLineup(lineupId: string, teamId: string): Promise<boolean> {
+    if (!this.lineupsCollection) throw new Error('Lineups collection is not initialized');
+    
+    try {
+      // Start a session to use transactions
+      const session = this.client?.startSession();
+      
+      try {
+        // Start a transaction
+        session?.startTransaction();
+        
+        // Unset any existing default
+        await this.lineupsCollection.updateMany(
+          { teamId, isDefault: true, gameId: { $exists: false } },
+          { $set: { isDefault: false } },
+          { session }
+        );
+        
+        // Set the new default
+        await this.lineupsCollection.updateOne(
+          { id: lineupId, teamId },
+          { $set: { isDefault: true } },
+          { session }
+        );
+        
+        // Commit the transaction
+        await session?.commitTransaction();
+        
+        return true;
+      } catch (error) {
+        // Abort the transaction in case of error
+        await session?.abortTransaction();
+        throw error;
+      } finally {
+        // End the session
+        session?.endSession();
+      }
+    } catch (error) {
+      console.error('Failed to set default lineup:', error);
+      return false;
+    }
+  }
 
   /**
    * Save a lineup

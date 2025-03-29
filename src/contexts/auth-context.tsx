@@ -369,59 +369,73 @@ export function AuthProvider({ children }: AuthProviderProps) {
   
   // Set active team
   const changeActiveTeam = async (teamId: string): Promise<boolean> => {
-    if (!user || !user.teams.includes(teamId)) {
-      console.log('Team ID not found in user teams:', teamId, user?.teams);
-      return false;
-    }
+    // Allow changing to any team, even if not in user.teams yet
+    // The API will add it if needed (temporary development approach)
+    console.log('Changing active team to:', teamId);
     
     setIsLoading(true);
     
     try {
-      console.log('Changing active team to:', teamId);
-      
       // First update localStorage to ensure UI consistency
-      const storageService = (await import('../services/storage/enhanced-storage')).storageService;
-      
-      // Make sure we're using the right approach for localStorage
       try {
-        // 1. Direct localStorage approach for immediate effect
-        localStorage.setItem(STORAGE_KEYS.CURRENT_TEAM, JSON.stringify(teamId));
+        // Use correct key from STORAGE_KEYS for consistent localStorage access
+        localStorage.setItem(STORAGE_KEYS.CURRENT_TEAM, teamId);
+        console.log(`Directly set localStorage[${STORAGE_KEYS.CURRENT_TEAM}] to:`, teamId);
         
-        // 2. Then use the service for any additional logic
-        const localSuccess = storageService.team.setCurrentTeamId(teamId);
-        
-        if (!localSuccess) {
-          console.error('Failed to update local storage with new active team');
-        }
+        // Load enhanced storage service and use it as well for any event dispatching
+        const storageService = (await import('../services/storage/enhanced-storage')).storageService;
+        storageService.team.setCurrentTeam(teamId);
       } catch (localStorageError) {
         console.error('Error updating localStorage:', localStorageError);
+        // Continue anyway - the API call is more important
       }
       
       // Then update MongoDB via API
+      console.log(`Making API call to set active team to: ${teamId}`);
       const response = await fetch('/api/auth/set-active-team', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ teamId }),
+        // Ensure credentials are included for cookies
+        credentials: 'include'
       });
       
+      console.log('API response status:', response.status);
       const data = await response.json();
+      console.log('API response data:', data);
       
       if (response.ok && data.success) {
         console.log('Successfully updated active team on the server');
         
-        // Update user with new active team
-        setUser(prev => prev ? { ...prev, activeTeamId: teamId } : null);
+        // Update user with new active team and add to teams array if not there
+        setUser(prev => {
+          if (!prev) return null;
+          
+          // Create a new teams array, ensuring the team is included
+          const updatedTeams = prev.teams.includes(teamId) 
+            ? prev.teams 
+            : [...prev.teams, teamId];
+            
+          return { 
+            ...prev, 
+            activeTeamId: teamId,
+            teams: updatedTeams
+          };
+        });
         
         // Reload team memberships
         if (user) {
-          const updatedUser = { ...user, activeTeamId: teamId };
+          const updatedUser = { 
+            ...user, 
+            activeTeamId: teamId,
+            teams: user.teams.includes(teamId) ? user.teams : [...user.teams, teamId]
+          };
           await loadTeamMemberships(updatedUser);
         }
         
         // Set a localStorage flag to indicate team switch has occurred
-        // This is for components that might load before the refresh
         localStorage.setItem('LAST_TEAM_SWITCH', Date.now().toString());
         
         // Trigger the UserEvent for team change

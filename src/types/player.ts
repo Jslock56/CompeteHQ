@@ -1,6 +1,7 @@
 export interface Player {
     id: string;
     teamId: string;
+    name?: string;       // Full name (for MongoDB compatibility)
     firstName: string;
     lastName: string;
     jerseyNumber: number;
@@ -8,6 +9,7 @@ export interface Player {
     secondaryPositions: Position[];
     active: boolean;
     notes?: string;
+    battingOrder?: number; // Optional batting order
     createdAt: number; // timestamp
     updatedAt: number; // timestamp
   }

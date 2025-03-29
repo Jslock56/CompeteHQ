@@ -10,7 +10,8 @@ import {
   FiUser, 
   FiCalendar, 
   FiList, 
-  FiActivity 
+  FiActivity,
+  FiUpload
 } from 'react-icons/fi';
 
 interface NavigationProps {
@@ -53,13 +54,18 @@ const Navigation: React.FC<NavigationProps> = ({ currentTeam }) => {
     },
     {
       name: 'Lineups',
-      href: '/lineup',
+      href: '/lineup/dashboard',
       icon: <Icon as={FiList} boxSize={4} />,
     },
     {
       name: 'Practice',
       href: '/practice',
       icon: <Icon as={FiActivity} boxSize={4} />,
+    },
+    {
+      name: 'Import',
+      href: '/import',
+      icon: <Icon as={FiUpload} boxSize={4} />,
     },
   ];
 

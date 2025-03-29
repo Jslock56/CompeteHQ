@@ -17,14 +17,29 @@ export interface Lineup {
   id: string;
   
   /**
-   * Associated game ID
+   * Associated game ID (optional for non-game lineups)
    */
-  gameId: string;
+  gameId?: string;
   
   /**
    * Team ID
    */
   teamId: string;
+  
+  /**
+   * Lineup name (for non-game lineups)
+   */
+  name?: string;
+  
+  /**
+   * Lineup type (for non-game lineups)
+   */
+  type?: 'standard' | 'competitive' | 'developmental';
+  
+  /**
+   * Whether this is the default lineup for the team
+   */
+  isDefault?: boolean;
   
   /**
    * Inning-by-inning lineup data
