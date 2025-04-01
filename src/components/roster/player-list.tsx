@@ -339,13 +339,28 @@ export default function PlayerList({
                       
                       {/* Positions - visible on larger screens */}
                       <Td display={{ base: 'none', md: 'table-cell' }}>
-                        <Flex gap={2} wrap="wrap">
-                          {player.primaryPositions.map(pos => (
-                            <PositionBadge key={`primary-${pos}`} position={pos} isPrimary={true} />
-                          ))}
-                          {player.secondaryPositions.map(pos => (
-                            <PositionBadge key={`secondary-${pos}`} position={pos} isPrimary={false} />
-                          ))}
+                        <Flex direction="column" gap={2}>
+                          {player.primaryPositions.length > 0 && (
+                            <Flex gap={2} wrap="wrap" align="center">
+                              <Text fontSize="xs" fontWeight="medium" color="gray.600" mr={1}>
+                                Primary:
+                              </Text>
+                              {player.primaryPositions.map(pos => (
+                                <PositionBadge key={`primary-${pos}`} position={pos} isPrimary={true} />
+                              ))}
+                            </Flex>
+                          )}
+                          
+                          {player.secondaryPositions.length > 0 && (
+                            <Flex gap={2} wrap="wrap" align="center">
+                              <Text fontSize="xs" fontWeight="medium" color="gray.600" mr={1}>
+                                Secondary:
+                              </Text>
+                              {player.secondaryPositions.map(pos => (
+                                <PositionBadge key={`secondary-${pos}`} position={pos} isPrimary={false} />
+                              ))}
+                            </Flex>
+                          )}
                         </Flex>
                       </Td>
                       
@@ -375,19 +390,6 @@ export default function PlayerList({
                               />
                             </Tooltip>
                           )}
-                          
-                          {/* Toggle active */}
-                          <IconButton
-                            aria-label={player.active ? "Mark as inactive" : "Mark as active"}
-                            icon={<CheckIcon />}
-                            size="sm"
-                            variant="ghost"
-                            colorScheme={player.active ? "green" : "green"}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (onToggleActive) onToggleActive(player.id);
-                            }}
-                          />
                           
                           {/* Edit */}
                           <NextLink href={`/roster/${player.id}/edit`} passHref>
