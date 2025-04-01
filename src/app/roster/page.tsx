@@ -5,6 +5,7 @@ import NextLink from 'next/link';
 import {
   Box,
   Button,
+  Checkbox,
   Flex,
   Heading,
   Text,
@@ -71,7 +72,7 @@ function RosterPage() {
   
   // Handle position filter change
   const handlePositionFilterChange = (position: Position | 'all') => {
-    setPositionFilter(position === 'all' ? null : position);
+    setPositionFilter(position === 'all' ? null : position as Position);
   };
   
   // Handle deleting a player
@@ -99,47 +100,6 @@ function RosterPage() {
       title="Team Roster"
       subtitle={currentTeam ? `${currentTeam.name} · ${currentTeam.ageGroup} · ${currentTeam.season}` : undefined}
     >
-      {/* Filter Card */}
-      <Card mb={6}>
-        <Flex direction={{ base: "column", md: "row" }} gap={4}>
-          {/* Position filter */}
-          <Box flex="1">
-            <Text fontSize="sm" fontWeight="medium" color="gray.700" mb={2}>
-              Position
-            </Text>
-            <Flex flexWrap="wrap" gap={2}>
-              {POSITION_FILTERS.map((position) => (
-                <Button
-                  key={position.value}
-                  size="sm"
-                  variant={(position.value === 'all' && positionFilter === null) || positionFilter === position.value ? "solid" : "outline"}
-                  colorScheme={(position.value === 'all' && positionFilter === null) || positionFilter === position.value ? "primary" : "gray"}
-                  onClick={() => handlePositionFilterChange(position.value)}
-                >
-                  {position.label}
-                </Button>
-              ))}
-            </Flex>
-          </Box>
-          
-          {/* Include inactive toggle */}
-          <Flex align="flex-end">
-            <Button
-              colorScheme={showInactive ? "blue" : "gray"}
-              variant={showInactive ? "solid" : "outline"}
-              size="sm"
-              leftIcon={showInactive ? 
-                <Box as="span" w="4" h="4" borderRadius="full" bg="white" display="inline-flex" justifyContent="center" alignItems="center">
-                  <Box as="span" w="2" h="2" borderRadius="full" bg="blue.500" />
-                </Box> : undefined
-              }
-              onClick={() => setShowInactive(!showInactive)}
-            >
-              {showInactive ? "Showing Inactive" : "Show Inactive"}
-            </Button>
-          </Flex>
-        </Flex>
-      </Card>
       
       {/* Stats Cards */}
       <StatGroup mb={6}>
@@ -172,18 +132,44 @@ function RosterPage() {
         </Card>
       </StatGroup>
       
-      {/* Search and Add Player */}
-      <Flex direction={{ base: "column", sm: "row" }} justify="space-between" gap={4} mb={6}>
-        <InputGroup maxW={{ sm: "320px" }}>
-          <InputLeftElement pointerEvents="none">
-            <SearchIcon color="gray.400" />
-          </InputLeftElement>
-          <Input 
-            placeholder="Search players..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </InputGroup>
+      {/* Search and Filters */}
+      <Flex direction={{ base: "column", sm: "row" }} justify="space-between" align="center" gap={4} mb={6}>
+        <Flex gap={3} direction={{ base: "column", md: "row" }} flex="1" align={{ md: "center" }}>
+          <InputGroup maxW={{ sm: "320px" }}>
+            <InputLeftElement pointerEvents="none">
+              <SearchIcon color="gray.400" />
+            </InputLeftElement>
+            <Input 
+              placeholder="Search players..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </InputGroup>
+          
+          <Select 
+            placeholder="All Positions" 
+            maxW={{ base: "100%", md: "180px" }}
+            value={positionFilter || "all"}
+            onChange={(e) => handlePositionFilterChange(e.target.value as Position | 'all')}
+          >
+            {POSITION_FILTERS.slice(1).map((position) => (
+              <option key={position.value} value={position.value}>
+                {position.label}
+              </option>
+            ))}
+          </Select>
+
+          <Checkbox
+            isChecked={showInactive}
+            onChange={() => setShowInactive(!showInactive)}
+            colorScheme="blue"
+            size="md"
+          >
+            <Text fontSize="sm" color="gray.700">
+              Show Inactive
+            </Text>
+          </Checkbox>
+        </Flex>
         
         <NextLink href="/roster/new" passHref>
           <Button 
