@@ -339,26 +339,30 @@ export default function PlayerList({
                       
                       {/* Positions - visible on larger screens */}
                       <Td display={{ base: 'none', md: 'table-cell' }}>
-                        <Flex direction="column" gap={2}>
+                        <Flex direction="row" gap={4} flexWrap="wrap">
                           {player.primaryPositions.length > 0 && (
-                            <Flex gap={2} wrap="wrap" align="center">
-                              <Text fontSize="xs" fontWeight="medium" color="gray.600" mr={1}>
+                            <Flex gap={2} align="center" minWidth="140px">
+                              <Text fontSize="xs" fontWeight="medium" color="gray.600" whiteSpace="nowrap">
                                 Primary:
                               </Text>
-                              {player.primaryPositions.map(pos => (
-                                <PositionBadge key={`primary-${pos}`} position={pos} isPrimary={true} />
-                              ))}
+                              <Flex gap={1} wrap="wrap">
+                                {player.primaryPositions.map(pos => (
+                                  <PositionBadge key={`primary-${pos}`} position={pos} isPrimary={true} />
+                                ))}
+                              </Flex>
                             </Flex>
                           )}
                           
                           {player.secondaryPositions.length > 0 && (
-                            <Flex gap={2} wrap="wrap" align="center">
-                              <Text fontSize="xs" fontWeight="medium" color="gray.600" mr={1}>
+                            <Flex gap={2} align="center" minWidth="140px">
+                              <Text fontSize="xs" fontWeight="medium" color="gray.600" whiteSpace="nowrap">
                                 Secondary:
                               </Text>
-                              {player.secondaryPositions.map(pos => (
-                                <PositionBadge key={`secondary-${pos}`} position={pos} isPrimary={false} />
-                              ))}
+                              <Flex gap={1} wrap="wrap">
+                                {player.secondaryPositions.map(pos => (
+                                  <PositionBadge key={`secondary-${pos}`} position={pos} isPrimary={false} />
+                                ))}
+                              </Flex>
                             </Flex>
                           )}
                         </Flex>

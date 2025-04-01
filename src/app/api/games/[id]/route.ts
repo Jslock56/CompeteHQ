@@ -92,6 +92,13 @@ export async function PUT(
     const body = await request.json();
     const game = body.game;
     
+    console.log(`API games/[id]/PUT - Received game data:`, {
+      id: game?.id,
+      opponent: game?.opponent,
+      innings: game?.innings,
+      inningsType: typeof game?.innings
+    });
+    
     if (!game) {
       return Response.json(
         { success: false, error: 'No game data provided' },
@@ -129,6 +136,22 @@ export async function PUT(
     
     // Ensure we preserve the team ID and don't allow it to be changed
     game.teamId = existingGame.teamId;
+    
+    // Ensure innings is a number
+    if (game.innings !== undefined) {
+      if (typeof game.innings !== 'number') {
+        console.log(`Converting innings from ${typeof game.innings} to number:`, game.innings);
+        game.innings = Number(game.innings);
+        
+        // If conversion fails, use existing innings or default to 6
+        if (isNaN(game.innings)) {
+          console.warn(`Failed to convert innings value to number. Using existing value.`);
+          game.innings = existingGame.innings || 7; // Default to 7 innings
+        }
+      }
+      
+      console.log(`Game innings after type validation: ${game.innings} (${typeof game.innings})`);
+    }
     
     // Save the updated game
     const success = await mongoDBService.saveGame(game);

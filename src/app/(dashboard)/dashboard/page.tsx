@@ -321,8 +321,22 @@ const DashboardPage = () => {
     }
   };
 
-  // Show create team button if no teams
-  if (!authLoading && teams.length === 0) {
+  // Show loading spinner until we have data
+  if (authLoading || (!teams.length && isLoading)) {
+    return (
+      <Flex justify="center" align="center" minH="60vh" direction="column">
+        <LoadingSpinner 
+          type="baseball" 
+          size="xl" 
+          animation="pulse" 
+          text="Loading..." 
+        />
+      </Flex>
+    );
+  }
+  
+  // Show create team button if no teams and done loading
+  if (!authLoading && teams.length === 0 && !isLoading) {
     return (
       <Container maxW="container.xl" py={10}>
         <VStack spacing={8} align="center" justify="center" minH="60vh">

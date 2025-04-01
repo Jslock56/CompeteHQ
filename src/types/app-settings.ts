@@ -14,4 +14,10 @@ export interface AppSettings {
      * NOTE: This must be set to false to ensure MongoDB integration
      */
     preferOffline: boolean;
+    
+    /**
+     * Default number of innings for new games
+     * Range: 1-9
+     */
+    defaultInnings: number;
   }

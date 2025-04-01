@@ -82,7 +82,7 @@ export async function GET(
           date: { type: Number, required: true }, // Changed to Number for timestamp
           location: { type: String, required: true },
           isHome: { type: Boolean, required: true, default: true },
-          innings: { type: Number, required: true, default: 6 },
+          innings: { type: Number, required: true, default: 7 }, // Default to 7 innings
           status: { 
             type: String, 
             enum: ['scheduled', 'in-progress', 'completed', 'canceled'],

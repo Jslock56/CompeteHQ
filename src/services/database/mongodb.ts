@@ -66,6 +66,7 @@ const COLLECTIONS = {
   PLAYERS: 'players',
   GAMES: 'games',
   LINEUPS: 'lineups',
+  GAME_LINEUPS: 'gameLineups', // Dedicated collection for game lineups
   PRACTICES: 'practices',
   POSITION_HISTORIES: 'positionHistories',
   USERS: 'users',
@@ -81,6 +82,7 @@ class MongoDBService {
   private playersCollection: Collection<Player> | null = null;
   private gamesCollection: Collection<Game> | null = null;
   private lineupsCollection: Collection<Lineup> | null = null;
+  private gameLineupsCollection: Collection<Lineup> | null = null; // Dedicated collection for game lineups
   private practicesCollection: Collection<Practice> | null = null;
   private positionHistoriesCollection: Collection<PositionHistory> | null = null;
   private usersCollection: Collection<any> | null = null;
@@ -448,10 +450,22 @@ class MongoDBService {
     
     try {
       console.log(`MongoDB: Fetching game with ID: ${id}`);
+      console.log(`MongoDB: Connection status: ${isConnected ? 'Connected' : 'Not connected'}`);
+      console.log(`MongoDB: Games collection name: ${this.gamesCollection?.collectionName}`);
+      
+      // Use raw find to get the actual document from MongoDB
       const game = await this.gamesCollection.findOne({ id });
       
       if (game) {
         console.log(`MongoDB: Successfully found game: ${id}, opponent: ${game.opponent}`);
+        console.log(`MongoDB: Game data details:`, {
+          id: game.id,
+          opponent: game.opponent,
+          innings: game.innings,
+          inningsType: typeof game.innings,
+          allFields: Object.keys(game).join(', '),
+          rawData: JSON.stringify(game)
+        });
       } else {
         console.log(`MongoDB: No game found with ID: ${id}`);
       }
@@ -470,7 +484,7 @@ class MongoDBService {
     if (!this.gamesCollection) throw new Error('Games collection is not initialized');
     
     try {
-      console.log(`MongoDB: Saving game with ID: ${game.id}, opponent: ${game.opponent}, teamId: ${game.teamId}`);
+      console.log(`MongoDB: Saving game with ID: ${game.id}, opponent: ${game.opponent}, teamId: ${game.teamId}, innings: ${game.innings}, innings type: ${typeof game.innings}`);
       
       // Handle the lineup reference if present
       if (game.lineupId) {
@@ -485,6 +499,26 @@ class MongoDBService {
         }
       }
       
+      // Make a debug copy of the game object to log it
+      const gameCopy = {...game};
+      console.log(`MongoDB: About to save game with full data:`, JSON.stringify(gameCopy));
+      
+      // Force innings to be a number if it exists
+      if (game.innings !== undefined && typeof game.innings !== 'number') {
+        console.warn(`MongoDB: Converting innings from ${typeof game.innings} to number:`, game.innings);
+        game.innings = Number(game.innings);
+        
+        // If conversion fails, use default value
+        if (isNaN(game.innings)) {
+          console.warn(`MongoDB: Failed to convert innings to number, using default value`);
+          game.innings = 7;
+        }
+      }
+      
+      // Log the connection status and collection name
+      console.log(`MongoDB: Connection status: ${isConnected ? 'Connected' : 'Not connected'}`);
+      console.log(`MongoDB: Games collection name: ${this.gamesCollection?.collectionName}`);
+      
       const result = await this.gamesCollection.updateOne(
         { id: game.id },
         { $set: game },
@@ -492,6 +526,18 @@ class MongoDBService {
       );
       
       console.log(`MongoDB: Game save result - acknowledged: ${result.acknowledged}, upsertedCount: ${result.upsertedCount}, modifiedCount: ${result.modifiedCount}`);
+      
+      // Verify the game was actually saved by retrieving it
+      try {
+        const savedGame = await this.getGame(game.id);
+        console.log(`MongoDB: Verification - Game retrieved after save:`, {
+          id: savedGame?.id,
+          innings: savedGame?.innings,
+          inningsType: savedGame ? typeof savedGame.innings : 'undefined'
+        });
+      } catch (verifyError) {
+        console.error('MongoDB: Failed to verify game was saved:', verifyError);
+      }
       
       return result.acknowledged;
     } catch (error) {

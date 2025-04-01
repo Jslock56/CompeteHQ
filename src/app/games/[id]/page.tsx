@@ -29,7 +29,8 @@ import {
   useDisclosure,
   Icon,
   Alert,
-  AlertIcon
+  AlertIcon,
+  useToast
 } from '@chakra-ui/react';
 import { 
   ChevronRightIcon, 
@@ -50,14 +51,18 @@ import { storageService } from '../../../services/storage/enhanced-storage';
 function GameDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const toast = useToast();
   const gameId = params.id as string;
   
   // Get game data
   const { game, isLoading, error } = useSingleGame(gameId);
   const { deleteGame } = useGames();
   
-  // State for delete confirmation
+  // State for delete confirmations (game and lineup)
   const { isOpen, onOpen, onClose } = useDisclosure();
+  
+  // Track which delete operation we're confirming (game or lineup)
+  const [deleteMode, setDeleteMode] = useState<'game' | 'lineup'>('game');
   
   // Handle deleting the game
   const handleDeleteGame = () => {
@@ -70,6 +75,68 @@ function GameDetailPage() {
     } else {
       alert('Failed to delete game');
     }
+  };
+  
+  // Handle deleting just the lineup (not the game)
+  const handleDeleteLineup = async () => {
+    if (!game || !game.lineupId) return;
+    
+    try {
+      console.log(`Deleting lineup for game: ${game.id}, lineupId: ${game.lineupId}`);
+      
+      // Call API to delete the lineup
+      const response = await fetch(`/api/games/${game.id}/lineup`, {
+        method: 'DELETE',
+      });
+      
+      if (response.ok) {
+        const responseData = await response.json();
+        console.log("Delete lineup API response:", responseData);
+        
+        toast({
+          title: "Lineup deleted",
+          description: "The lineup has been deleted successfully.",
+          status: "success",
+          duration: 3000,
+          isClosable: true,
+        });
+        
+        // The API now handles updating the game reference, so we just need to refresh the UI
+        window.location.reload();
+      } else {
+        console.error('Failed to delete lineup, server returned:', response.status);
+        let errorMessage = "Failed to delete lineup.";
+        
+        try {
+          const errorData = await response.json();
+          console.error('Error details:', errorData);
+          if (errorData.error) {
+            errorMessage = errorData.error;
+          }
+        } catch (e) {
+          console.error('Could not parse error response');
+        }
+        
+        toast({
+          title: "Error",
+          description: errorMessage,
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting lineup:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while deleting the lineup.",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+    
+    onClose();
   };
   
   // Format dates for display
@@ -239,38 +306,77 @@ function GameDetailPage() {
             </Button>
           </NextLink>
 
-          {/* Lineup Button */}
-          {hasLineup ? (
-            <NextLink href={`/lineup/${game.lineupId}`} passHref>
-              <Button as="a" leftIcon={<Icon as={CalendarIcon} />} colorScheme="primary">
-                View Lineup
-              </Button>
-            </NextLink>
-          ) : isUpcoming ? (
-            <NextLink href={`/games/${game.id}/lineup/create`} passHref>
-              <Button as="a" leftIcon={<AddIcon />} colorScheme="primary">
-                Create Lineup
-              </Button>
-            </NextLink>
-          ) : (
-            <Button 
-              leftIcon={<Icon as={CalendarIcon} />} 
-              isDisabled 
-              variant="outline" 
-              cursor="not-allowed"
-              opacity={0.6}
-            >
-              No Lineup
-            </Button>
-          )}
+          {/* Lineup Buttons */}
+          <Flex direction="column" gap={2} minWidth="200px">
+            <HStack spacing={2}>
+              <Badge 
+                colorScheme={hasLineup ? "green" : "orange"} 
+                py={1} 
+                px={2}
+                fontSize="sm"
+                borderRadius="md"
+              >
+                {hasLineup ? "Lineup Ready" : "No Lineup"}
+              </Badge>
+              
+              {hasLineup && (
+                <Button 
+                  size="xs" 
+                  colorScheme="red" 
+                  variant="ghost"
+                  leftIcon={<DeleteIcon />}
+                  onClick={() => {
+                    setDeleteMode('lineup');
+                    onOpen();
+                  }}
+                >
+                  Delete
+                </Button>
+              )}
+            </HStack>
+            
+            <HStack spacing={2} wrap="wrap">
+              {hasLineup && (
+                <NextLink href={`/lineup/${game.lineupId}`} passHref>
+                  <Button 
+                    as="a" 
+                    leftIcon={<Icon as={CalendarIcon} />} 
+                    colorScheme="primary" 
+                    size="md"
+                    variant="solid"
+                    w="140px"
+                  >
+                    View Lineup
+                  </Button>
+                </NextLink>
+              )}
+              
+              <NextLink href={`/games/${game.id}/lineup/create`} passHref>
+                <Button 
+                  as="a" 
+                  leftIcon={hasLineup ? <EditIcon /> : <AddIcon />} 
+                  colorScheme={hasLineup ? "teal" : "green"}
+                  size="md"
+                  variant="solid"
+                  w="140px"
+                  fontWeight="bold"
+                >
+                  {hasLineup ? 'Edit Lineup' : 'Create Lineup'}
+                </Button>
+              </NextLink>
+            </HStack>
+          </Flex>
 
           {/* Delete Button */}
           <Button
             leftIcon={<DeleteIcon />}
             colorScheme="red"
-            onClick={onOpen}
+            onClick={() => {
+              setDeleteMode('game');
+              onOpen();
+            }}
           >
-            Delete
+            Delete Game
           </Button>
         </HStack>
       </Flex>
@@ -328,9 +434,43 @@ function GameDetailPage() {
           <Box p={6}>
             <Text fontWeight="medium" fontSize="sm" color="gray.500" mb={1}>Lineup Status</Text>
             {hasLineup ? (
-              <Badge colorScheme="green">Lineup Created</Badge>
+              <Flex align="center">
+                <Badge 
+                  colorScheme="green" 
+                  py={1.5} 
+                  px={3} 
+                  borderRadius="md"
+                  mr={2}
+                >
+                  ✓ Ready
+                </Badge>
+                <Text color="green.600" fontSize="sm" fontWeight="medium">
+                  Lineup created on {lineup ? new Date(lineup.createdAt).toLocaleDateString() : 'N/A'}
+                </Text>
+              </Flex>
             ) : (
-              <Badge colorScheme="yellow">No Lineup</Badge>
+              <Flex align="center">
+                <Badge 
+                  colorScheme="orange" 
+                  py={1.5} 
+                  px={3} 
+                  borderRadius="md"
+                  mr={2}
+                >
+                  ! Needed
+                </Badge>
+                <NextLink href={`/games/${game.id}/lineup/create`} passHref>
+                  <Button 
+                    as="a" 
+                    size="xs" 
+                    leftIcon={<AddIcon />} 
+                    colorScheme="green"
+                    ml={2}
+                  >
+                    Create Now
+                  </Button>
+                </NextLink>
+              </Flex>
             )}
           </Box>
         </SimpleGrid>
@@ -370,11 +510,36 @@ function GameDetailPage() {
             py={8} 
             px={6}
           >
-            <Icon as={CalendarIcon} boxSize={12} color="gray.400" mb={4} />
-            <Heading size="sm" mb={2}>View full lineup details</Heading>
-            <Text fontSize="sm" color="gray.500" textAlign="center">
-              Click the button above to see the complete lineup with all positions and innings.
-            </Text>
+            <Box 
+              bg="green.50" 
+              p={4} 
+              borderRadius="lg" 
+              textAlign="center" 
+              maxW="md" 
+              mx="auto"
+              borderWidth="1px"
+              borderColor="green.200"
+            >
+              <Flex justify="center" mb={3}>
+                <Icon as={CalendarIcon} boxSize={12} color="green.500" />
+              </Flex>
+              <Heading size="sm" mb={2} color="green.700">Lineup Ready for Game Day</Heading>
+              <Text fontSize="sm" color="green.600" textAlign="center" mb={4}>
+                This game has a complete lineup with {lineup.innings?.length || '?'} innings and positions assigned.
+              </Text>
+              <HStack spacing={3} justify="center">
+                <NextLink href={`/lineup/${lineup.id}`} passHref>
+                  <Button as="a" colorScheme="green" size="sm">
+                    View Full Lineup
+                  </Button>
+                </NextLink>
+                <NextLink href={`/games/${game.id}/lineup/create`} passHref>
+                  <Button as="a" variant="outline" colorScheme="blue" size="sm">
+                    Edit Lineup
+                  </Button>
+                </NextLink>
+              </HStack>
+            </Box>
           </Flex>
         </Box>
       )}
@@ -419,11 +584,34 @@ function GameDetailPage() {
                 <Text>Communicate any last-minute changes to players and parents.</Text>
               </HStack>
               {!hasLineup && (
-                <HStack spacing={2} alignItems="flex-start">
-                  <Box as="span" fontSize="lg" mt={1}>•</Box>
-                  <Text fontWeight="bold" color="primary.600">
-                    Don&apos;t forget to create a lineup for this game!
-                  </Text>
+                <HStack spacing={2} alignItems="flex-start" mt={3}>
+                  <Box 
+                    p={3} 
+                    bg="orange.50" 
+                    borderRadius="md" 
+                    borderWidth="1px" 
+                    borderColor="orange.200"
+                    width="100%"
+                  >
+                    <Flex align="center" justify="space-between">
+                      <HStack>
+                        <Box as="span" fontSize="xl" color="orange.500">⚠️</Box>
+                        <Text fontWeight="bold" color="orange.700">
+                          This game doesn&apos;t have a lineup yet!
+                        </Text>
+                      </HStack>
+                      <NextLink href={`/games/${game.id}/lineup/create`} passHref>
+                        <Button 
+                          as="a" 
+                          size="sm" 
+                          colorScheme="green" 
+                          leftIcon={<AddIcon />}
+                        >
+                          Create Lineup Now
+                        </Button>
+                      </NextLink>
+                    </Flex>
+                  </Box>
                 </HStack>
               )}
             </VStack>
@@ -435,17 +623,31 @@ function GameDetailPage() {
       <Modal isOpen={isOpen} onClose={onClose} isCentered>
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>Delete Game</ModalHeader>
+          <ModalHeader>
+            {deleteMode === 'game' ? 'Delete Game' : 'Delete Lineup'}
+          </ModalHeader>
           <ModalBody>
-            Are you sure you want to delete the game against {game.opponent}? This action cannot be undone.
-            {hasLineup && " This will also delete the associated lineup."}
+            {deleteMode === 'game' ? (
+              <>
+                Are you sure you want to delete the game against {game.opponent}? This action cannot be undone.
+                {hasLineup && " This will also delete the associated lineup."}
+              </>
+            ) : (
+              <>
+                Are you sure you want to delete the lineup for this game against {game.opponent}? 
+                This action cannot be undone. The game itself will not be deleted.
+              </>
+            )}
           </ModalBody>
           <ModalFooter>
             <Button variant="outline" mr={3} onClick={onClose}>
               Cancel
             </Button>
-            <Button colorScheme="red" onClick={handleDeleteGame}>
-              Delete
+            <Button 
+              colorScheme="red" 
+              onClick={deleteMode === 'game' ? handleDeleteGame : handleDeleteLineup}
+            >
+              {deleteMode === 'game' ? 'Delete Game' : 'Delete Lineup'}
             </Button>
           </ModalFooter>
         </ModalContent>

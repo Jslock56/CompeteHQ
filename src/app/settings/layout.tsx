@@ -19,6 +19,7 @@ export default function SettingsLayout({
   
   // Define settings navigation items
   const navItems = [
+    { name: 'Profile', path: '/profile' },
     { name: 'General', path: '/settings' },
     { name: 'Assets & Logo', path: '/settings/assets' },
     { name: 'Account', path: '/settings/account' },

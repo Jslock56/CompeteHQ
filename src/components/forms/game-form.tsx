@@ -68,13 +68,34 @@ const GameForm: React.FC<GameFormProps> = ({ initialGame, isEditing = false, onS
     return date.toISOString().substring(0, 16); // Format: YYYY-MM-DDThh:mm
   };
   
+  // Get default innings from settings
+  const getDefaultInnings = (): string => {
+    try {
+      // Import settings service
+      const { settingsService } = require('../../services/database/settings-service');
+      const settings = settingsService.getSettings();
+      return (settings.defaultInnings || 7).toString();
+    } catch (e) {
+      console.warn('Could not load settings, using default innings value of 7');
+      return '7';
+    }
+  };
+
   // Form state
   const [opponent, setOpponent] = useState(initialGame?.opponent || '');
   const [dateTime, setDateTime] = useState(
     initialGame ? parseDateFromTimestamp(initialGame.date) : getDefaultDate()
   );
   const [location, setLocation] = useState(initialGame?.location || '');
-  const [innings, setInnings] = useState(initialGame?.innings.toString() || '6');
+  
+  // Log innings value from initialGame
+  console.log('Game form initialization - innings value:', {
+    initialGameInnings: initialGame?.innings,
+    initialGameInningsType: typeof initialGame?.innings,
+    settingInitialValue: initialGame?.innings !== undefined ? initialGame.innings.toString() : getDefaultInnings()
+  });
+  
+  const [innings, setInnings] = useState(initialGame?.innings !== undefined ? initialGame.innings.toString() : getDefaultInnings());
   const [isHome, setIsHome] = useState(initialGame?.isHome !== false); // Default to true if not specified
   const [status, setStatus] = useState(initialGame?.status || 'scheduled');
   
@@ -134,20 +155,52 @@ const GameForm: React.FC<GameFormProps> = ({ initialGame, isEditing = false, onS
       // Convert date string to timestamp
       const dateTimestamp = new Date(dateTime).getTime();
       
+      // Log conversion from string to number for innings
+      console.log('Game form - innings conversion:', {
+        rawInningsValue: innings,
+        parsedInningsValue: inningsNumber,
+        valueType: typeof inningsNumber
+      });
+      
       try {
         if (isEditing && initialGame) {
-          // Update existing game
-          const updated = await updateGame({
+          console.log('Game form - Updating existing game:', {
+            id: initialGame.id,
+            originalInnings: initialGame.innings,
+            newInnings: inningsNumber
+          });
+          
+          // Create a clean game object to ensure proper type conversion
+          const gameToUpdate = {
             ...initialGame,
             opponent,
             date: dateTimestamp,
             location,
-            innings: inningsNumber,
+            innings: inningsNumber, // Explicitly using the parsed number
             isHome,
             status: status as Game['status']
+          };
+          
+          // Force innings to be a number
+          if (typeof gameToUpdate.innings !== 'number' || isNaN(gameToUpdate.innings)) {
+            console.warn('Innings is not a valid number, forcing conversion:', gameToUpdate.innings);
+            gameToUpdate.innings = parseInt(innings) || 7; // Default to 7 innings
+          }
+          
+          console.log('About to send update with forced number type:', {
+            innings: gameToUpdate.innings,
+            inningsType: typeof gameToUpdate.innings
           });
           
+          // Update existing game
+          const updated = await updateGame(gameToUpdate);
+          
           if (updated) {
+            // Log game values before and after update for debugging
+            console.log('Game update - Original innings:', initialGame.innings);
+            console.log('Game update - New innings value:', inningsNumber);
+            console.log('Game update - Updated object innings:', updated.innings);
+            
             toast({
               title: 'Game updated.',
               description: `Game against ${opponent} has been updated successfully.`,
@@ -157,7 +210,8 @@ const GameForm: React.FC<GameFormProps> = ({ initialGame, isEditing = false, onS
             });
             
             if (onSuccess) {
-              onSuccess(initialGame);
+              // Pass the updated game with the new values, not the initial game
+              onSuccess(updated);
             } else {
               router.push('/games');
             }

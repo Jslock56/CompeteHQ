@@ -13,6 +13,7 @@ class SettingsService {
     currentTeamId: undefined,
     theme: 'light',
     preferOffline: true, // Default to offline mode to ensure data access
+    defaultInnings: 7, // Default to 7 innings
   };
   
   // Settings storage key
@@ -93,6 +94,20 @@ class SettingsService {
    */
   public setCurrentTeamId(teamId: string | undefined): boolean {
     return this.saveSettings({ currentTeamId: teamId });
+  }
+  
+  /**
+   * Set the default number of innings for new games
+   * @param innings Number of innings (1-9)
+   */
+  public setDefaultInnings(innings: number): boolean {
+    // Validate innings is within range
+    if (innings < 1 || innings > 9 || !Number.isInteger(innings)) {
+      console.error('Invalid innings value:', innings);
+      return false;
+    }
+    
+    return this.saveSettings({ defaultInnings: innings });
   }
   
   /**

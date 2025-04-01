@@ -297,6 +297,9 @@ export default function GameList({
             Location
           </Box>
           <Box flex="1">Opponent</Box>
+          <Box w="120px" textAlign="center" fontWeight="medium" color="gray.600">
+            Lineup
+          </Box>
           <Box w="200px" display={{ base: "none", md: "block" }}>
             Venue
           </Box>
@@ -337,6 +340,8 @@ function GameItem({ game, onDelete }: GameItemProps) {
   // Determine status and result
   const isPast = gameDate < new Date()
   const hasLineup = Boolean(game.lineupId)
+  // Log lineup status for debugging
+  console.log(`Game ${game.id} vs ${game.opponent} has lineup: ${hasLineup}, lineupId: ${game.lineupId || 'none'}`)
 
   // Get status badge
   const getStatusBadge = () => {
@@ -408,6 +413,23 @@ function GameItem({ game, onDelete }: GameItemProps) {
         {getStatusBadge()}
       </Flex>
 
+      {/* Lineup Status Column - Made simpler */}
+      <Box w="120px" textAlign="center">
+        <Badge 
+          colorScheme={hasLineup ? "green" : "orange"}
+          py={1}
+          px={2}
+          borderRadius="md"
+          fontSize="xs"
+          cursor="pointer"
+          as={NextLink}
+          href={`/games/${game.id}/lineup/create`}
+          _hover={{ opacity: 0.8 }}
+        >
+          {hasLineup ? "Lineup Ready" : "Create Lineup"}
+        </Badge>
+      </Box>
+
       {/* Additional info */}
       <HStack spacing={4} mr={4} color="gray.500" display={{ base: "none", md: "flex" }}>
         <Flex align="center">
@@ -418,17 +440,44 @@ function GameItem({ game, onDelete }: GameItemProps) {
         </Flex>
 
         {game.status === "scheduled" && (
-          <Badge colorScheme={hasLineup ? "green" : "gray"}>{hasLineup ? "Lineup Ready" : "No Lineup"}</Badge>
+          <Badge 
+            colorScheme={hasLineup ? "teal" : "orange"} 
+            cursor="pointer" 
+            as={NextLink} 
+            href={`/games/${game.id}/lineup/create`}
+            px={2}
+            py={1}
+            fontSize="sm"
+            fontWeight="medium"
+            borderRadius="md"
+            display="flex"
+            alignItems="center"
+          >
+            {hasLineup ? "✓ View/Edit Lineup" : "! Create Lineup"}
+          </Badge>
         )}
       </HStack>
 
       {/* Actions */}
       <HStack spacing={2}>
-        <NextLink href={`/games/${game.id}`} passHref>
-          <Button as="a" colorScheme="green" size="sm" variant="solid" display={{ base: "none", md: "flex" }}>
-            View Details
-          </Button>
-        </NextLink>
+        <HStack spacing={2} display={{ base: "none", md: "flex" }}>
+          <NextLink href={`/games/${game.id}`} passHref>
+            <Button as="a" colorScheme="blue" size="sm" variant="solid">
+              View Details
+            </Button>
+          </NextLink>
+          <NextLink href={`/games/${game.id}/lineup/create`} passHref>
+            <Button 
+              as="a" 
+              colorScheme={hasLineup ? "teal" : "green"} 
+              size="sm" 
+              variant="solid"
+              leftIcon={hasLineup ? <EditIcon /> : <AddIcon />}
+            >
+              {hasLineup ? "Edit Lineup" : "Create Lineup"}
+            </Button>
+          </NextLink>
+        </HStack>
 
         <Menu>
           <MenuButton as={IconButton} aria-label="Options" icon={<ChevronDownIcon />} variant="ghost" size="sm" />
@@ -437,9 +486,15 @@ function GameItem({ game, onDelete }: GameItemProps) {
               View Details
             </MenuItem>
 
-            {game.status === "scheduled" && !hasLineup && (
-              <MenuItem as={NextLink} href={`/games/${game.id}/lineup/create`}>
-                Create Lineup
+            {game.status === "scheduled" && (
+              <MenuItem 
+                as={NextLink} 
+                href={`/games/${game.id}/lineup/create`}
+                icon={hasLineup ? <EditIcon /> : <AddIcon />}
+                color={hasLineup ? "teal.500" : "green.500"}
+                fontWeight="medium"
+              >
+                {hasLineup ? "Edit Lineup" : "Create Lineup"}
               </MenuItem>
             )}
 

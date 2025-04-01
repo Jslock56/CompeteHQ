@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
         date: { type: Number, required: true },
         location: { type: String, required: true },
         isHome: { type: Boolean, required: true, default: true },
-        innings: { type: Number, required: true, default: 6 },
+        innings: { type: Number, required: true, default: 7 }, // Default to 7 innings
         status: { 
           type: String, 
           enum: ['scheduled', 'in-progress', 'completed', 'canceled'],
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
         date: { type: Number, required: true },
         location: { type: String, required: true },
         isHome: { type: Boolean, required: true, default: true },
-        innings: { type: Number, required: true, default: 6 },
+        innings: { type: Number, required: true, default: 7 }, // Default to 7 innings
         status: { 
           type: String, 
           enum: ['scheduled', 'in-progress', 'completed', 'canceled'],

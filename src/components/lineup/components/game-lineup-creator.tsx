@@ -57,6 +57,7 @@ interface GameLineupCreatorProps {
   game: Game;
   players: Player[];
   onLineupGenerated: (lineup: Lineup) => void;
+  existingLineup?: Lineup | null;
 }
 
 /**
@@ -65,7 +66,8 @@ interface GameLineupCreatorProps {
 const GameLineupCreator: React.FC<GameLineupCreatorProps> = ({ 
   game, 
   players,
-  onLineupGenerated
+  onLineupGenerated,
+  existingLineup
 }) => {
   const router = useRouter();
   const toast = useToast();
@@ -155,7 +157,7 @@ const GameLineupCreator: React.FC<GameLineupCreatorProps> = ({
   // Handle generating the lineup
   // State for active position when editing
   const [activePosition, setActivePosition] = useState<Position>('P');
-  const [generatedLineup, setGeneratedLineup] = useState<Lineup | null>(null);
+  const [generatedLineup, setGeneratedLineup] = useState<Lineup | null>(existingLineup || null);
   const [viewingInning, setViewingInning] = useState(1);
   const [isStatsOpen, setIsStatsOpen] = useState(false);
   
@@ -169,16 +171,32 @@ const GameLineupCreator: React.FC<GameLineupCreatorProps> = ({
     teamId: game.teamId,
     players,
     name: `${game.opponent} Game Lineup`,
-    type: lineupType
+    type: lineupType,
+    initialLineup: existingLineup
   });
   
-  // Update the editable lineup when a new lineup is generated
+  // Update state when an existing lineup is provided
   useEffect(() => {
-    if (generatedLineup) {
-      // This would normally update the editable lineup, but we're keeping them separate for now
-      // The user can generate a lineup automatically, then manually adjust it
+    if (existingLineup && !generatedLineup) {
+      setGeneratedLineup(existingLineup);
+      
+      // Set lineup type based on existing lineup
+      if (existingLineup.type) {
+        setLineupType(existingLineup.type as any);
+      }
+      
+      // Disable fair play for existing lineups (assuming they've already been validated)
+      setEnableFairPlay(false);
+      
+      toast({
+        title: "Lineup loaded",
+        description: "Existing lineup loaded for editing.",
+        status: "info",
+        duration: 3000,
+        isClosable: true,
+      });
     }
-  }, [generatedLineup]);
+  }, [existingLineup, toast, generatedLineup]);
 
   // Handle position cell click
   const handlePositionClick = (position: Position) => {
@@ -227,6 +245,16 @@ const GameLineupCreator: React.FC<GameLineupCreatorProps> = ({
         p.active && !unavailablePlayers.includes(p.id)
       );
 
+      // Log configuration
+      console.log("Generating lineup with configuration:", {
+        gameId: game.id,
+        teamId: game.teamId,
+        innings: game.innings,
+        availablePlayers: availablePlayers.length,
+        lineupType,
+        fairPlayEnabled: enableFairPlay
+      });
+
       // Generate lineup with our utility
       const newLineup = generateGameLineup({
         gameId: game.id,
@@ -243,6 +271,21 @@ const GameLineupCreator: React.FC<GameLineupCreatorProps> = ({
         } : null
       });
 
+      // Ensure the lineup has the correct number of innings
+      if (newLineup.innings.length !== game.innings) {
+        console.log(`Fixing innings count - Expected: ${game.innings}, Actual: ${newLineup.innings.length}`);
+        
+        // Update innings array to match game.innings
+        newLineup.innings = Array.from({ length: game.innings }, (_, i) => {
+          const inningNumber = i + 1;
+          // Use existing inning data if available, otherwise create new inning
+          const existingInning = newLineup.innings.find(inn => inn.inning === inningNumber);
+          return existingInning || { inning: inningNumber, positions: [] };
+        });
+      }
+
+      console.log("Generated lineup:", newLineup);
+      
       // Store the generated lineup in state
       setGeneratedLineup(newLineup);
       
@@ -276,15 +319,21 @@ const GameLineupCreator: React.FC<GameLineupCreatorProps> = ({
       // Try to save directly to the database first
       try {
         const apiUrl = `/api/games/${game.id}/lineup`;
-        console.log(`Attempting to save lineup directly to API at ${apiUrl}`);
-        console.log(`Request payload: ${JSON.stringify({ lineup: generatedLineup }, null, 2)}`);
+        // Add a flag to indicate this should be stored in the gameLineups collection
+        const lineupWithFlag = {
+          ...generatedLineup,
+          collectionType: 'gameLineups'
+        };
+        
+        console.log(`Saving game lineup to MongoDB: ${apiUrl}`);
+        console.log(`Request payload: ${JSON.stringify({ lineup: lineupWithFlag }, null, 2)}`);
         
         const response = await fetch(apiUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ lineup: generatedLineup }),
+          body: JSON.stringify({ lineup: lineupWithFlag }),
           credentials: 'include' // Ensure cookies are sent with the request
         });
         
@@ -345,6 +394,17 @@ const GameLineupCreator: React.FC<GameLineupCreatorProps> = ({
   };
 
   const { dateStr, timeStr } = formatGameDate(game.date);
+  
+  // Enhanced debug logging for innings value issues
+  console.log("GAME LINEUP DEBUG - Game details in creator:", {
+    opponent: game.opponent,
+    innings: game.innings,
+    inningsType: typeof game.innings,
+    inningsValue: game.innings ? "defined" : "undefined",
+    location: game.location,
+    date: game.date,
+    gameFull: game
+  });
 
   // Toggle player availability
   const togglePlayerAvailability = (playerId: string) => {
@@ -375,46 +435,26 @@ const GameLineupCreator: React.FC<GameLineupCreatorProps> = ({
             borderColor={borderColor}
             direction="column"
           >
-            <Heading size="md">Game Details</Heading>
-            <Text color="gray.500" fontSize="sm">
-              Creating lineup for this scheduled game
-            </Text>
+            <Heading size="sm">Game: vs {game.opponent}</Heading>
           </Flex>
           
           <Box p={3}>
-            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-              <HStack align="flex-start" spacing={3}>
-                <Icon as={CalendarIcon} mt={1} color="gray.500" />
-                <VStack align="flex-start" spacing={0}>
-                  <Text fontWeight="semibold">Date & Time</Text>
-                  <Text color="gray.600">{dateStr} at {timeStr}</Text>
-                </VStack>
-              </HStack>
-              
-              <HStack align="flex-start" spacing={3}>
-                <Icon as={FaMapMarkerAlt} mt={1} color="gray.500" />
-                <VStack align="flex-start" spacing={0}>
-                  <Text fontWeight="semibold">Location</Text>
-                  <Text color="gray.600">{game.location}</Text>
-                </VStack>
-              </HStack>
-              
-              <HStack align="flex-start" spacing={3}>
-                <Icon as={TimeIcon} mt={1} color="gray.500" />
-                <VStack align="flex-start" spacing={0}>
-                  <Text fontWeight="semibold">Innings</Text>
-                  <Text color="gray.600">{game.innings} innings</Text>
-                </VStack>
-              </HStack>
-              
-              <HStack align="flex-start" spacing={3}>
-                <Icon as={ChevronRightIcon} mt={1} color="gray.500" />
-                <VStack align="flex-start" spacing={0}>
-                  <Text fontWeight="semibold">Opponent</Text>
-                  <Text color="gray.600">{game.opponent}</Text>
-                </VStack>
-              </HStack>
-            </SimpleGrid>
+            <Flex wrap="wrap" justifyContent="flex-start" gap={4}>
+            <HStack spacing={2} color="gray.600">
+              <Icon as={CalendarIcon} boxSize={4} />
+              <Text>{dateStr} at {timeStr}</Text>
+            </HStack>
+            
+            <HStack spacing={2} color="gray.600">
+              <Icon as={FaMapMarkerAlt} boxSize={4} />
+              <Text>{game.location}</Text>
+            </HStack>
+            
+            <HStack spacing={2} color="gray.600">
+              <Icon as={TimeIcon} boxSize={4} />
+              <Text fontWeight="medium">{game.innings} innings</Text>
+            </HStack>
+          </Flex>
           </Box>
         </Box>
         

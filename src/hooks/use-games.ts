@@ -156,7 +156,11 @@ export function useGames(): UseGamesResult {
           const data = await response.json();
           
           if (data.success && data.game) {
-            console.log(`Loaded game ${gameId} from API`);
+            console.log(`Loaded game ${gameId} from API`, {
+              gameId: data.game.id,
+              innings: data.game.innings,
+              inningsType: typeof data.game.innings
+            });
             
             // Update local storage for offline access
             storageService.game.saveGame(data.game);

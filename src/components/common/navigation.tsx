@@ -11,7 +11,8 @@ import {
   FiCalendar, 
   FiList, 
   FiActivity,
-  FiUpload
+  FiUpload,
+  FiSettings
 } from 'react-icons/fi';
 
 interface NavigationProps {
@@ -66,6 +67,11 @@ const Navigation: React.FC<NavigationProps> = ({ currentTeam }) => {
       name: 'Import',
       href: '/import',
       icon: <Icon as={FiUpload} boxSize={4} />,
+    },
+    {
+      name: 'Profile',
+      href: '/profile',
+      icon: <Icon as={FiSettings} boxSize={4} />,
     },
   ];
 

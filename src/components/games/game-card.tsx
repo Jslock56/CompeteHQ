@@ -151,10 +151,10 @@ const GameCard: React.FC<GameCardProps> = ({ game, showActions = true, onDelete 
           </NextLink>
           
           <HStack spacing={1}>
-            {game.status === 'scheduled' && !hasLineup && (
+            {game.status === 'scheduled' && (
               <NextLink href={`/games/${game.id}/lineup/create`} passHref>
-                <Button as="a" size="sm" colorScheme="green" variant="ghost" leftIcon={<AddIcon />}>
-                  Create Lineup
+                <Button as="a" size="sm" colorScheme="green" variant="ghost" leftIcon={hasLineup ? <EditIcon /> : <AddIcon />}>
+                  {hasLineup ? 'Edit Lineup' : 'Create Lineup'}
                 </Button>
               </NextLink>
             )}
