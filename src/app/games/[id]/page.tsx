@@ -247,7 +247,7 @@ function GameDetailPage() {
               </Button>
             </NextLink>
           ) : isUpcoming ? (
-            <NextLink href={`/lineup/new?gameId=${game.id}`} passHref>
+            <NextLink href={`/games/${game.id}/lineup/create`} passHref>
               <Button as="a" leftIcon={<AddIcon />} colorScheme="primary">
                 Create Lineup
               </Button>

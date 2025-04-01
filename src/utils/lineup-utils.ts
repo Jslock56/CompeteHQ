@@ -1,5 +1,7 @@
 import { Lineup, LineupInning, PositionAssignment } from '../types/lineup';
 import { Player, Position } from '../types/player';
+import { generateGameLineup as generateGameLineupImpl } from './game-lineup-generator';
+import { GameLineupGeneratorOptions } from './game-lineup-generator';
 
 export interface ValidationResult {
   valid: boolean;
@@ -8,6 +10,12 @@ export interface ValidationResult {
   affectedInnings?: number[];
   severity: 'error' | 'warning';
 }
+
+/**
+ * Generate a game-specific lineup with fair play rules applied
+ * (This is a re-export of the implementation in game-lineup-generator.ts)
+ */
+export const generateGameLineup = generateGameLineupImpl;
 
 /**
  * Checks if all positions in an inning have players assigned

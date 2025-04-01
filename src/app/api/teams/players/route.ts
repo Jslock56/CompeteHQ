@@ -37,7 +37,7 @@ async function getCurrentUser(request: NextRequest) {
   // First try cookie-based auth
   const cookieStore = cookies();
   // Use await with cookies to fix the synchronous API usage error
-  const authCookie = await cookieStore.get('auth_token');
+  const authCookie = cookieStore.get('auth_token');
   const authToken = authCookie?.value;
   
   // If no cookie token, try checking Authorization header

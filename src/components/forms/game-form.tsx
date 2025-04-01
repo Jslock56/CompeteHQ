@@ -53,6 +53,8 @@ const GameForm: React.FC<GameFormProps> = ({ initialGame, isEditing = false, onS
     { value: 'canceled', label: 'Canceled' }
   ];
   
+  console.log('CreateGame function available:', typeof createGame);
+  
   // Default date value for new games (set to today at noon)
   const getDefaultDate = () => {
     const today = new Date();
@@ -73,6 +75,7 @@ const GameForm: React.FC<GameFormProps> = ({ initialGame, isEditing = false, onS
   );
   const [location, setLocation] = useState(initialGame?.location || '');
   const [innings, setInnings] = useState(initialGame?.innings.toString() || '6');
+  const [isHome, setIsHome] = useState(initialGame?.isHome !== false); // Default to true if not specified
   const [status, setStatus] = useState(initialGame?.status || 'scheduled');
   
   // Error state
@@ -131,57 +134,66 @@ const GameForm: React.FC<GameFormProps> = ({ initialGame, isEditing = false, onS
       // Convert date string to timestamp
       const dateTimestamp = new Date(dateTime).getTime();
       
-      if (isEditing && initialGame) {
-        // Update existing game
-        const updated = updateGame({
-          ...initialGame,
-          opponent,
-          date: dateTimestamp,
-          location,
-          innings: inningsNumber,
-          status: status as Game['status']
-        });
-        
-        if (updated) {
+      try {
+        if (isEditing && initialGame) {
+          // Update existing game
+          const updated = await updateGame({
+            ...initialGame,
+            opponent,
+            date: dateTimestamp,
+            location,
+            innings: inningsNumber,
+            isHome,
+            status: status as Game['status']
+          });
+          
+          if (updated) {
+            toast({
+              title: 'Game updated.',
+              description: `Game against ${opponent} has been updated successfully.`,
+              status: 'success',
+              duration: 5000,
+              isClosable: true,
+            });
+            
+            if (onSuccess) {
+              onSuccess(initialGame);
+            } else {
+              router.push('/games');
+            }
+          } else {
+            setErrors({ general: 'Failed to update game' });
+          }
+        } else {
+          // Create new game
+          const newGame = await createGame({
+            opponent,
+            date: dateTimestamp,
+            location,
+            innings: inningsNumber,
+            isHome, // Use the state value
+            status: status as Game['status']
+          });
+          
           toast({
-            title: 'Game updated.',
-            description: `Game against ${opponent} has been updated successfully.`,
+            title: 'Game created.',
+            description: `Game against ${opponent} has been created successfully.`,
             status: 'success',
             duration: 5000,
             isClosable: true,
           });
           
           if (onSuccess) {
-            onSuccess(initialGame);
+            onSuccess(newGame);
           } else {
             router.push('/games');
           }
-        } else {
-          setErrors({ general: 'Failed to update game' });
         }
-      } else {
-        // Create new game
-        const newGame = createGame({
-          opponent,
-          date: dateTimestamp,
-          location,
-          innings: inningsNumber,
-          status: status as Game['status']
+      } catch (error) {
+        console.error('Error saving game:', error);
+        setErrors({ 
+          general: `Failed to ${isEditing ? 'update' : 'create'} game: ${String(error)}` 
         });
-        
-        toast({
-          title: 'Game created.',
-          description: `Game against ${opponent} has been created successfully.`,
-          status: 'success',
-          duration: 5000,
-          isClosable: true,
-        });
-        
-        if (onSuccess) {
-          onSuccess(newGame);
-        } else {
-          router.push('/games');
-        }
       }
     } catch (error) {
       setErrors({ 
@@ -256,6 +268,19 @@ const GameForm: React.FC<GameFormProps> = ({ initialGame, isEditing = false, onS
               ))}
             </Select>
             {errors.innings && <FormErrorMessage>{errors.innings}</FormErrorMessage>}
+          </FormControl>
+          
+          {/* Home/Away */}
+          <FormControl>
+            <FormLabel htmlFor="game-type">Game Type</FormLabel>
+            <Select
+              id="game-type"
+              value={isHome ? 'home' : 'away'}
+              onChange={(e) => setIsHome(e.target.value === 'home')}
+            >
+              <option value="home">Home Game</option>
+              <option value="away">Away Game</option>
+            </Select>
           </FormControl>
           
           {/* Status */}

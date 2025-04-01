@@ -1,5 +1,7 @@
 "use client";
 
+// This file handles viewing both game-specific and non-game lineups
+
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import NextLink from 'next/link';

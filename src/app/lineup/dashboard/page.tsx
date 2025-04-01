@@ -6,6 +6,7 @@ import { withTeam } from '@/contexts/team-context';
 import { useFieldPositionLineups } from '@/hooks/use-lineup';
 import LineupDashboard from '@/components/lineup/lineup-dashboard';
 import { useTeamContext } from '@/contexts/team-context';
+import MongoDBStatus from '@/components/common/mongo-db-status';
 
 /**
  * Lineup Dashboard page for managing field position lineups
@@ -33,6 +34,9 @@ function LineupDashboardPage() {
   return (
     <Container maxW="container.xl" py={8}>
       <Flex direction="column" gap={6}>
+        {/* MongoDB Status diagnostics component */}
+        <MongoDBStatus />
+        
         {/* Main content */}
         <Box width="100%">
           <LineupDashboard

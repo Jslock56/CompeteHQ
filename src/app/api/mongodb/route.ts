@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { storageAdapter } from '../../../services/database/storage-adapter';
 import { syncService } from '../../../services/database/sync-service';
+import mongoDBService from '../../../services/database/mongodb';
 
 export async function GET(request: NextRequest) {
   try {
@@ -27,6 +28,41 @@ export async function GET(request: NextRequest) {
       case 'getSyncState':
         return NextResponse.json(syncService.getSyncState());
         
+      case 'testConnection':
+        // Test direct MongoDB connection
+        console.log('Testing direct MongoDB connection...');
+        const startTime = Date.now();
+        await mongoDBService.connect();
+        const connectionTime = Date.now() - startTime;
+        const isConnected = mongoDBService.isConnectedToDatabase();
+        const error = mongoDBService.getConnectionError();
+        
+        return NextResponse.json({ 
+          online: isConnected, 
+          connectionTime,
+          error: error?.message,
+          mongodb: true
+        });
+        
+      case 'debugGetNonGameLineups':
+        // Get non-game lineups for a team
+        const teamId = searchParams.get('teamId');
+        if (!teamId) {
+          return NextResponse.json({ error: 'Team ID parameter is required' }, { status: 400 });
+        }
+        
+        await mongoDBService.connect();
+        if (!mongoDBService.isConnectedToDatabase()) {
+          return NextResponse.json({ error: 'MongoDB connection failed' }, { status: 500 });
+        }
+        
+        const lineups = await mongoDBService.getNonGameLineupsByTeam(teamId);
+        return NextResponse.json({ 
+          success: true,
+          count: lineups.length,
+          lineups: lineups.map(l => ({ id: l.id, name: l.name, isDefault: l.isDefault }))
+        });
+      
       default:
         return NextResponse.json({ error: `Unknown operation: ${operation}` }, { status: 400 });
     }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import mongoDBService from '../../../services/database/mongodb';
+import { connectMongoDB } from '../../../services/database/mongodb';
 
 /**
  * GET /api/health
@@ -12,8 +12,8 @@ export async function GET(request: NextRequest) {
     let databaseError = null;
     
     try {
-      await mongoDBService.connect();
-      databaseConnected = mongoDBService.isConnectedToDatabase();
+      await connectMongoDB();
+      databaseConnected = true;
     } catch (error) {
       console.error('Health check - MongoDB connection error:', error);
       databaseError = String(error);

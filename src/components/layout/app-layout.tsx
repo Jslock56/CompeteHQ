@@ -19,14 +19,12 @@ import { useTeamContext } from "../../contexts/team-context";
 import { useAuth } from "../../contexts/auth-context";
 import Header from "../common/header";
 import Navigation from "../common/navigation";
-import WidgetsSidebar from "../common/widgets-sidebar";
 import Logo from "../common/logo";
 import PageTransitions from "../common/page-transitions";
 
 export function AppLayout({ children }: { children: ReactNode }) {
-  // Use Chakra's useDisclosure for controlling drawer/sidebar states
+  // Use Chakra's useDisclosure for controlling drawer/sidebar state
   const navSidebar = useDisclosure();
-  const widgetSidebar = useDisclosure();
   
   // Get current team from the team context
   const { currentTeam, isLoading } = useTeamContext();
@@ -114,17 +112,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </Box>
         </Box>
         
-        {/* Right Widgets Sidebar */}
-        <Box
-          bg="white"
-          w="280px"
-          borderLeftWidth="1px"
-          borderColor="gray.200"
-          display={{ base: "none", lg: "block" }}
-          flex="none"
-        >
-          <WidgetsSidebar />
-        </Box>
       </Flex>
       
       {/* Footer */}
@@ -140,7 +127,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       >
         <Flex justify="center" align="center" gap={2}>
           <Logo showText={false} size="sm" />
-          <Text>© {new Date().getFullYear()} competeHQ</Text>
+          <Text suppressHydrationWarning>© {new Date().getFullYear()} competeHQ</Text>
         </Flex>
       </Box>
     </Flex>

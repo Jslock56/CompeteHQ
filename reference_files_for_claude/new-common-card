@@ -1,0 +1,77 @@
+import { Box, type BoxProps, Flex, Heading, Text, useColorModeValue } from "@chakra-ui/react"
+import type React from "react"
+
+interface CardProps extends BoxProps {
+  title?: string
+  subtitle?: string
+  action?: React.ReactNode
+  footer?: React.ReactNode
+  children: React.ReactNode
+}
+
+export const Card: React.FC<CardProps> = ({ title, subtitle, action, footer, children, ...props }) => {
+  const borderColor = useColorModeValue("gray.200", "gray.700")
+  const headerBgColor = useColorModeValue("white", "gray.800")
+  const footerBgColor = useColorModeValue("gray.50", "gray.900")
+  const subtitleColor = useColorModeValue("gray.600", "gray.400")
+
+  return (
+    <Box
+      bg="white"
+      borderWidth="1px"
+      borderColor={borderColor}
+      borderRadius="8px"
+      overflow="hidden"
+      boxShadow="0 2px 4px rgba(0,0,0,0.1)"
+      transition="all 0.2s ease-in-out"
+      _hover={{
+        boxShadow: "0 4px 8px rgba(0,0,0,0.08)",
+      }}
+      {...props}
+    >
+      {(title || action) && (
+        <Flex
+          px={{ base: 5, md: 6 }}
+          py={4}
+          alignItems="center"
+          justifyContent="space-between"
+          borderBottomWidth={1}
+          borderBottomColor={borderColor}
+          bg={headerBgColor}
+        >
+          <Box>
+            {title && (
+              <Heading size="md" fontWeight="600" color="#10417A">
+                {title}
+              </Heading>
+            )}
+            {subtitle && (
+              <Text color={subtitleColor} fontSize="sm" mt={1}>
+                {subtitle}
+              </Text>
+            )}
+          </Box>
+          {action && <Box ml={4}>{action}</Box>}
+        </Flex>
+      )}
+
+      <Box px={{ base: 5, md: 6 }} py={6} position="relative">
+        {children}
+      </Box>
+
+      {footer && (
+        <Flex
+          px={{ base: 5, md: 6 }}
+          py={4}
+          alignItems="center"
+          borderTopWidth={1}
+          borderTopColor={borderColor}
+          bg={footerBgColor}
+        >
+          {footer}
+        </Flex>
+      )}
+    </Box>
+  )
+}
+

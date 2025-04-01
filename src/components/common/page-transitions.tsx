@@ -18,18 +18,40 @@ const PageTransitions: React.FC<PageTransitionsProps> = ({
   // Call all hooks at the top level in the same order
   const pathname = usePathname();
   const bgColor = useColorModeValue('white', 'gray.800');
-  const [isVisible, setIsVisible] = useState(false);
-
-  // Reset visibility state when path changes
+  // Force the color mode to be the same during SSR and client rendering
+  const [mounted, setMounted] = useState(false);
   useEffect(() => {
+    setMounted(true);
+  }, []);
+  const [isVisible, setIsVisible] = useState(true); // Start visible for SSR
+
+  // Reset visibility state when path changes - initialize as true for SSR
+  const [isClient, setIsClient] = useState(false);
+  
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+  
+  useEffect(() => {
+    if (!isClient) return;
+    
     setIsVisible(false);
     const timer = setTimeout(() => {
       setIsVisible(true);
     }, 10);
     
     return () => clearTimeout(timer);
-  }, [pathname]);
+  }, [pathname, isClient]);
 
+  // Skip animations during SSR or initial client render
+  if (!mounted) {
+    return (
+      <Box bg={bgColor}>
+        {children}
+      </Box>
+    );
+  }
+  
   if (type === 'scale') {
     return (
       <ScaleFade 

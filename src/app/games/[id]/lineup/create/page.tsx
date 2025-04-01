@@ -102,6 +102,61 @@ function CreateGameLineupPage() {
   // Handle saving the lineup
   const handleSaveLineup = async () => {
     try {
+      console.log('Saving lineup to MongoDB database...');
+      
+      // Save lineup directly to API first for game lineups
+      try {
+        const apiUrl = `/api/games/${gameId}/lineup`;
+        const lineupToSave = {
+          ...lineup,
+          gameId,
+          teamId: currentTeam?.id,
+          updatedAt: Date.now()
+        };
+        
+        console.log(`Saving lineup directly to API at ${apiUrl}`);
+        const response = await fetch(apiUrl, {
+          method: lineup.id ? 'PUT' : 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ lineup: lineupToSave }),
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          
+          if (data.success && data.lineup) {
+            console.log('Successfully saved game lineup via API');
+            
+            toast({
+              title: "Lineup saved",
+              description: "The lineup has been saved successfully to the database.",
+              status: "success",
+              duration: 3000,
+              isClosable: true,
+            });
+            
+            // Navigate to the lineup view page
+            router.push(`/lineup/${data.lineup.id}`);
+            return;
+          } else {
+            console.warn('API response was OK but data format was unexpected:', data);
+          }
+        } else {
+          console.warn(`API returned status ${response.status} when saving game lineup`);
+          try {
+            const errorData = await response.json();
+            console.warn('Error details:', errorData);
+          } catch (e) {
+            console.warn('Could not parse error response:', e);
+          }
+        }
+      } catch (apiError) {
+        console.error('Error during direct API save:', apiError);
+      }
+      
+      // Fall back to the regular save method if direct API call fails
       const savedLineup = await saveLineup();
       
       if (savedLineup) {
@@ -114,11 +169,34 @@ function CreateGameLineupPage() {
             updatedAt: Date.now()
           };
           
-          // Save the updated game
-          const success = storageService.game.saveGame(updatedGame);
-          
-          if (!success) {
-            console.error('Failed to update game with lineup ID');
+          // Save the updated game via API
+          try {
+            const gameApiUrl = `/api/games/${gameId}`;
+            const gameResponse = await fetch(gameApiUrl, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ game: updatedGame }),
+            });
+            
+            if (!gameResponse.ok) {
+              console.error('Failed to update game with lineup ID via API');
+              
+              // Fallback to local storage
+              const success = storageService.game.saveGame(updatedGame);
+              if (!success) {
+                console.error('Failed to update game with lineup ID in local storage');
+              }
+            }
+          } catch (gameApiError) {
+            console.error('Error updating game with lineup ID:', gameApiError);
+            
+            // Fallback to local storage
+            const success = storageService.game.saveGame(updatedGame);
+            if (!success) {
+              console.error('Failed to update game with lineup ID in local storage');
+            }
           }
         }
         

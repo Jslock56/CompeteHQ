@@ -271,9 +271,58 @@ const GameLineupCreator: React.FC<GameLineupCreatorProps> = ({
   };
   
   // Handle saving the lineup
-  const handleSaveLineup = () => {
+  const handleSaveLineup = async () => {
     if (generatedLineup) {
-      // Pass the final lineup to parent component
+      // Try to save directly to the database first
+      try {
+        const apiUrl = `/api/games/${game.id}/lineup`;
+        console.log(`Attempting to save lineup directly to API at ${apiUrl}`);
+        console.log(`Request payload: ${JSON.stringify({ lineup: generatedLineup }, null, 2)}`);
+        
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ lineup: generatedLineup }),
+          credentials: 'include' // Ensure cookies are sent with the request
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          
+          if (data.success && data.lineup) {
+            console.log('Successfully saved game lineup to database');
+            
+            // Pass the final lineup to parent component
+            onLineupGenerated(data.lineup);
+            
+            toast({
+              title: "Lineup saved",
+              description: "Your game lineup has been saved to the database successfully.",
+              status: "success",
+              duration: 3000,
+              isClosable: true,
+            });
+            return;
+          } else {
+            console.warn('API response was OK but data format was unexpected:', data);
+          }
+        } else {
+          console.warn(`API returned status ${response.status} when saving game lineup`);
+          try {
+            const errorData = await response.json();
+            console.warn('Error details:', errorData);
+          } catch (e) {
+            console.warn('Could not parse error response:', e);
+          }
+        }
+      } catch (apiError) {
+        console.error('Error during direct API save:', apiError);
+      }
+      
+      // Fall back to passing the lineup to the parent component
+      console.log('Falling back to passing lineup to parent component');
       onLineupGenerated(generatedLineup);
       
       toast({

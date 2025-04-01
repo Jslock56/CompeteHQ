@@ -83,6 +83,7 @@ class MongoDBService {
   private lineupsCollection: Collection<Lineup> | null = null;
   private practicesCollection: Collection<Practice> | null = null;
   private positionHistoriesCollection: Collection<PositionHistory> | null = null;
+  private usersCollection: Collection<any> | null = null;
 
   // Connection status
   private isConnected = false;
@@ -91,6 +92,14 @@ class MongoDBService {
 
   // Singleton instance
   private static instance: MongoDBService;
+  
+  /**
+   * Get the MongoDB client instance
+   * Exposing this for debugging purposes
+   */
+  getClient(): MongoClient | null {
+    return this.client;
+  }
 
   /**
    * Get the singleton instance
@@ -163,6 +172,7 @@ class MongoDBService {
       this.lineupsCollection = this.db.collection<Lineup>(COLLECTIONS.LINEUPS);
       this.practicesCollection = this.db.collection<Practice>(COLLECTIONS.PRACTICES);
       this.positionHistoriesCollection = this.db.collection<PositionHistory>(COLLECTIONS.POSITION_HISTORIES);
+      this.usersCollection = this.db.collection(COLLECTIONS.USERS);
 
       // Create indexes
       await this.createIndexes();
@@ -435,7 +445,22 @@ class MongoDBService {
    */
   async getGame(id: string): Promise<Game | null> {
     if (!this.gamesCollection) throw new Error('Games collection is not initialized');
-    return this.gamesCollection.findOne({ id });
+    
+    try {
+      console.log(`MongoDB: Fetching game with ID: ${id}`);
+      const game = await this.gamesCollection.findOne({ id });
+      
+      if (game) {
+        console.log(`MongoDB: Successfully found game: ${id}, opponent: ${game.opponent}`);
+      } else {
+        console.log(`MongoDB: No game found with ID: ${id}`);
+      }
+      
+      return game;
+    } catch (error) {
+      console.error(`MongoDB: Error fetching game with ID ${id}:`, error);
+      throw error;
+    }
   }
 
   /**
@@ -445,11 +470,28 @@ class MongoDBService {
     if (!this.gamesCollection) throw new Error('Games collection is not initialized');
     
     try {
+      console.log(`MongoDB: Saving game with ID: ${game.id}, opponent: ${game.opponent}, teamId: ${game.teamId}`);
+      
+      // Handle the lineup reference if present
+      if (game.lineupId) {
+        console.log(`MongoDB: Game has a lineupId reference: ${game.lineupId}`);
+        
+        // Verify the lineup exists
+        const lineup = await this.getLineup(game.lineupId);
+        if (!lineup) {
+          console.warn(`MongoDB: Referenced lineup ${game.lineupId} does not exist`);
+        } else {
+          console.log(`MongoDB: Verified lineup ${game.lineupId} exists`);
+        }
+      }
+      
       const result = await this.gamesCollection.updateOne(
         { id: game.id },
         { $set: game },
         { upsert: true }
       );
+      
+      console.log(`MongoDB: Game save result - acknowledged: ${result.acknowledged}, upsertedCount: ${result.upsertedCount}, modifiedCount: ${result.modifiedCount}`);
       
       return result.acknowledged;
     } catch (error) {
@@ -551,6 +593,16 @@ class MongoDBService {
   }
   
   /**
+   * Get all lineups for a team (both game and non-game)
+   */
+  async getLineupsByTeam(teamId: string): Promise<Lineup[]> {
+    if (!this.lineupsCollection) throw new Error('Lineups collection is not initialized');
+    return this.lineupsCollection.find({ 
+      teamId 
+    }).toArray();
+  }
+  
+  /**
    * Get default lineup for a team
    */
   async getDefaultTeamLineup(teamId: string): Promise<Lineup | null> {
@@ -618,6 +670,14 @@ class MongoDBService {
     try {
       console.log(`MongoDB: Saving lineup with ID: ${lineup.id}, name: ${lineup.name}, teamId: ${lineup.teamId}, gameId: ${lineup.gameId || 'N/A'}`);
       
+      // To ensure we're not relying on transactions (which may fail in some MongoDB setups),
+      // we'll use a simpler approach for non-game lineups
+      if (!lineup.gameId) {
+        // For non-game lineups, call the specific non-game method
+        return this.saveNonGameLineup(lineup);
+      }
+      
+      // For game lineups, use a transaction
       // Start a session to use transactions
       const session = this.client?.startSession();
       
@@ -648,8 +708,6 @@ class MongoDBService {
               { session }
             );
           }
-        } else {
-          console.log(`MongoDB: This is a non-game lineup (${lineup.name})`);
         }
         
         // Commit the transaction
@@ -668,6 +726,76 @@ class MongoDBService {
       }
     } catch (error) {
       console.error('Failed to save lineup:', error);
+      return false;
+    }
+  }
+  
+  /**
+   * Save a non-game lineup - simpler implementation without transactions
+   * This is a more reliable method for non-game lineups that avoids transaction issues
+   */
+  async saveNonGameLineup(lineup: Lineup): Promise<boolean> {
+    if (!this.lineupsCollection) {
+      console.error('MongoDB: Lineups collection is not initialized when saving non-game lineup');
+      throw new Error('Lineups collection is not initialized');
+    }
+    
+    try {
+      // Ensure this is a non-game lineup
+      delete lineup.gameId;
+      
+      // Ensure all required fields
+      if (!lineup.id || !lineup.teamId) {
+        console.error(`MongoDB: Missing required fields for non-game lineup: id=${lineup.id}, teamId=${lineup.teamId}`);
+        return false;
+      }
+
+      console.log(`MongoDB: Saving non-game lineup with direct method - ID: ${lineup.id}, name: ${lineup.name}, teamId: ${lineup.teamId}`);
+      
+      // Force the _id field to be the same as id to avoid duplicate documents
+      const lineupWithId = {
+        ...lineup,
+        _id: lineup.id
+      };
+      
+      // Use insertOne for new documents, updateOne for existing
+      let lineupResult;
+      try {
+        // Check if document exists first
+        const existingDoc = await this.lineupsCollection.findOne({ id: lineup.id });
+        
+        if (existingDoc) {
+          console.log(`MongoDB: Updating existing non-game lineup with id: ${lineup.id}`);
+          lineupResult = await this.lineupsCollection.updateOne(
+            { id: lineup.id },
+            { $set: lineup }
+          );
+        } else {
+          console.log(`MongoDB: Creating new non-game lineup with id: ${lineup.id}`);
+          // Use insertOne to create a new document
+          lineupResult = await this.lineupsCollection.insertOne(lineupWithId);
+        }
+      } catch (dbError) {
+        console.error('MongoDB specific error during non-game lineup save:', dbError);
+        
+        // Last resort fallback - try with regular updateOne + upsert
+        console.log('MongoDB: Falling back to updateOne with upsert=true');
+        lineupResult = await this.lineupsCollection.updateOne(
+          { id: lineup.id },
+          { $set: lineup },
+          { upsert: true }
+        );
+      }
+      
+      console.log(`MongoDB: Non-game lineup direct save result:`, lineupResult);
+      
+      return lineupResult.acknowledged;
+    } catch (error) {
+      console.error('Failed to save non-game lineup with direct method:', error);
+      if (error instanceof Error) {
+        console.error(`Error name: ${error.name}, message: ${error.message}`);
+        console.error(`Stack trace: ${error.stack}`);
+      }
       return false;
     }
   }
@@ -765,6 +893,23 @@ class MongoDBService {
     
     // Get position histories for these players
     return this.positionHistoriesCollection.find({ playerId: { $in: playerIds } }).toArray();
+  }
+  
+  /**
+   * Get a user by auth token
+   */
+  async getUserByAuthToken(authToken: string): Promise<any | null> {
+    if (!this.usersCollection) throw new Error('Users collection is not initialized');
+    
+    try {
+      return this.usersCollection.findOne({ 
+        'auth.tokens.token': authToken,
+        'auth.tokens.expires': { $gt: Date.now() }
+      });
+    } catch (error) {
+      console.error('Failed to get user by auth token:', error);
+      return null;
+    }
   }
 
   /**

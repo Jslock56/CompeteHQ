@@ -31,14 +31,16 @@ const theme = extendTheme({
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <CacheProvider>
-      <ChakraProvider theme={theme} resetCSS>
-        <StorageProvider>
-          <AuthProvider>
-            <TeamProvider>
-              {children}
-            </TeamProvider>
-          </AuthProvider>
-        </StorageProvider>
+      <ChakraProvider theme={theme} resetCSS toastOptions={{ defaultOptions: { position: 'top' } }}>
+        <div id="chakra-root" suppressHydrationWarning>
+          <StorageProvider>
+            <AuthProvider>
+              <TeamProvider>
+                {children}
+              </TeamProvider>
+            </AuthProvider>
+          </StorageProvider>
+        </div>
       </ChakraProvider>
     </CacheProvider>
   );

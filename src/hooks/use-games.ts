@@ -76,7 +76,7 @@ export function useGames(): UseGamesResult {
   /**
    * Load all games for the current team
    */
-  const loadGames = useCallback(() => {
+  const loadGames = useCallback(async () => {
     if (!currentTeam) {
       setGames([]);
       setIsLoading(false);
@@ -85,6 +85,54 @@ export function useGames(): UseGamesResult {
     
     try {
       setIsLoading(true);
+      
+      // Use the team-specific endpoint to load games
+      try {
+        console.log(`Loading games for team ${currentTeam.id} from API...`);
+        const response = await fetch(`/api/teams/${currentTeam.id}/games`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          
+          if (data.success && Array.isArray(data.games)) {
+            console.log(`Loaded ${data.games.length} games for team ${currentTeam.id} from API`);
+            
+            // Process games to ensure dates are numbers/timestamps
+            const processedGames = data.games.map((game: Game) => {
+              // Ensure date is a timestamp/number for consistent comparison
+              if (game.date && typeof game.date !== 'number') {
+                try {
+                  // If it's a string or Date object, convert to timestamp
+                  game.date = new Date(game.date).getTime();
+                } catch (e) {
+                  console.error(`Failed to convert date for game ${game.id}:`, e);
+                }
+              }
+              return game;
+            });
+            
+            setGames(processedGames);
+            
+            // For debugging only
+            processedGames.forEach((game: Game) => {
+              console.log(`Game loaded - ID: ${game.id}, Team: ${game.teamId}, Opponent: ${game.opponent}, Date: ${game.date}, Human date: ${new Date(game.date).toLocaleString()}`);
+            });
+            
+            setError(null);
+            setIsLoading(false);
+            return;
+          } else {
+            console.warn('API response was OK but data format was unexpected:', data);
+          }
+        } else {
+          console.warn(`API returned status ${response.status} when loading games for team ${currentTeam.id}`);
+        }
+      } catch (apiError) {
+        console.error(`Failed to load games for team ${currentTeam.id} from API:`, apiError);
+      }
+      
+      // Fall back to local storage if API fails
+      console.log('Loading games from local storage');
       const teamGames = storageService.game.getGamesByTeam(currentTeam.id);
       setGames(teamGames);
       setError(null);
@@ -98,14 +146,45 @@ export function useGames(): UseGamesResult {
   /**
    * Get a single game by ID
    */
-  const getGame = useCallback((gameId: string): Game | null => {
-    return storageService.game.getGame(gameId);
+  const getGame = useCallback(async (gameId: string): Promise<Game | null> => {
+    try {
+      // First try to load from API
+      try {
+        const response = await fetch(`/api/games/${gameId}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          
+          if (data.success && data.game) {
+            console.log(`Loaded game ${gameId} from API`);
+            
+            // Update local storage for offline access
+            storageService.game.saveGame(data.game);
+            
+            return data.game;
+          } else {
+            console.warn('API response was OK but data format was unexpected:', data);
+          }
+        } else {
+          console.warn(`API returned status ${response.status} when loading game ${gameId}`);
+        }
+      } catch (apiError) {
+        console.error(`Failed to load game ${gameId} from API, falling back to local storage:`, apiError);
+      }
+      
+      // Fall back to local storage if API fails
+      console.log(`Loading game ${gameId} from local storage`);
+      return storageService.game.getGame(gameId);
+    } catch (error) {
+      console.error(`Error fetching game ${gameId}:`, error);
+      return null;
+    }
   }, []);
   
   /**
    * Create a new game
    */
-  const createGame = useCallback((gameData: Omit<Game, 'id' | 'teamId' | 'createdAt' | 'updatedAt'>): Game => {
+  const createGame = useCallback(async (gameData: Omit<Game, 'id' | 'teamId' | 'createdAt' | 'updatedAt'>): Promise<Game> => {
     if (!currentTeam) {
       throw new Error('No team selected');
     }
@@ -120,10 +199,40 @@ export function useGames(): UseGamesResult {
       updatedAt: now
     };
     
-    const success = storageService.game.saveGame(newGame);
-    
-    if (!success) {
-      throw new Error('Failed to save game');
+    // Create game via the team-specific API endpoint
+    try {
+      console.log(`Creating game for team ${currentTeam.id} via API...`);
+      const response = await fetch(`/api/teams/${currentTeam.id}/games`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ game: newGame }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.success && data.game) {
+          console.log(`Successfully created game ${data.game.id} via API`);
+          
+          // Also save to local storage for offline access
+          storageService.game.saveGame(data.game);
+          
+          // Refresh the games list
+          loadGames();
+          
+          return data.game;
+        } else {
+          console.warn('API response was OK but data format was unexpected:', data);
+        }
+      } else {
+        console.warn(`API returned status ${response.status} when creating game`);
+        throw new Error(`Failed to create game: ${response.status}`);
+      }
+    } catch (apiError) {
+      console.error('Failed to create game via API:', apiError);
+      throw apiError;
     }
     
     // Refresh the games list
@@ -135,13 +244,52 @@ export function useGames(): UseGamesResult {
   /**
    * Update an existing game
    */
-  const updateGame = useCallback((game: Game): boolean => {
+  const updateGame = useCallback(async (game: Game): Promise<boolean> => {
     // Update the timestamp
     const updatedGame: Game = {
       ...game,
       updatedAt: Date.now()
     };
     
+    // First try to update via API
+    try {
+      const response = await fetch(`/api/games/${game.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ game: updatedGame }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.success && data.game) {
+          console.log(`Successfully updated game ${game.id} via API`);
+          
+          // Update local state
+          setGames(prevGames => 
+            prevGames.map(g => 
+              g.id === game.id ? data.game : g
+            )
+          );
+          
+          // Update local storage for offline access
+          storageService.game.saveGame(data.game);
+          
+          return true;
+        } else {
+          console.warn('API response was OK but data format was unexpected:', data);
+        }
+      } else {
+        console.warn(`API returned status ${response.status} when updating game ${game.id}`);
+      }
+    } catch (apiError) {
+      console.error(`Failed to update game ${game.id} via API, falling back to local storage:`, apiError);
+    }
+    
+    // Fall back to local storage if API fails
+    console.log(`Updating game ${game.id} in local storage`);
     const success = storageService.game.saveGame(updatedGame);
     
     if (success) {
@@ -159,7 +307,38 @@ export function useGames(): UseGamesResult {
   /**
    * Delete a game
    */
-  const deleteGame = useCallback((gameId: string): boolean => {
+  const deleteGame = useCallback(async (gameId: string): Promise<boolean> => {
+    // First try to delete via API
+    try {
+      const response = await fetch(`/api/games/${gameId}`, {
+        method: 'DELETE',
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.success) {
+          console.log(`Successfully deleted game ${gameId} via API`);
+          
+          // Update local state
+          setGames(prevGames => prevGames.filter(game => game.id !== gameId));
+          
+          // Also delete from local storage
+          storageService.game.deleteGame(gameId);
+          
+          return true;
+        } else {
+          console.warn('API response was OK but data format was unexpected:', data);
+        }
+      } else {
+        console.warn(`API returned status ${response.status} when deleting game ${gameId}`);
+      }
+    } catch (apiError) {
+      console.error(`Failed to delete game ${gameId} via API, falling back to local storage:`, apiError);
+    }
+    
+    // Fall back to local storage if API fails
+    console.log(`Deleting game ${gameId} from local storage`);
     const success = storageService.game.deleteGame(gameId);
     
     if (success) {
@@ -172,11 +351,19 @@ export function useGames(): UseGamesResult {
   
   // Get upcoming and past games
   const now = Date.now();
+  console.log(`Filtering games - current timestamp: ${now}, total games: ${games.length}`);
+  
+  games.forEach(game => {
+    console.log(`Processing game: ID=${game.id}, Opponent=${game.opponent}, Date=${game.date}, IsUpcoming=${game.date > now}`);
+  });
+  
   const upcomingGames = games.filter(game => game.date > now)
     .sort((a, b) => a.date - b.date); // Sort by date ascending
   
   const pastGames = games.filter(game => game.date <= now)
     .sort((a, b) => b.date - a.date); // Sort by date descending (most recent first)
+    
+  console.log(`Split into ${upcomingGames.length} upcoming and ${pastGames.length} past games`);
   
   // Load games on initial mount and when current team changes
   useEffect(() => {
@@ -214,22 +401,55 @@ export function useSingleGame(gameId: string | null) {
       return;
     }
     
-    setIsLoading(true);
-    try {
-      const gameData = storageService.game.getGame(gameId);
-      setGame(gameData);
-      setError(null);
-    } catch (err) {
-      setError('Failed to load game: ' + String(err));
-    } finally {
-      setIsLoading(false);
+    async function loadGame() {
+      setIsLoading(true);
+      try {
+        // First try API
+        try {
+          const response = await fetch(`/api/games/${gameId}`);
+          
+          if (response.ok) {
+            const data = await response.json();
+            
+            if (data.success && data.game) {
+              console.log(`Loaded game ${gameId} from API`);
+              setGame(data.game);
+              
+              // Update local storage for offline access
+              storageService.game.saveGame(data.game);
+              
+              setError(null);
+              setIsLoading(false);
+              return;
+            } else {
+              console.warn('API response was OK but data format was unexpected:', data);
+            }
+          } else {
+            console.warn(`API returned status ${response.status} when loading game ${gameId}`);
+          }
+        } catch (apiError) {
+          console.error(`Failed to load game ${gameId} from API, falling back to local storage:`, apiError);
+        }
+        
+        // Fall back to local storage
+        console.log(`Loading game ${gameId} from local storage`);
+        const gameData = storageService.game.getGame(gameId);
+        setGame(gameData);
+        setError(null);
+      } catch (err) {
+        setError('Failed to load game: ' + String(err));
+      } finally {
+        setIsLoading(false);
+      }
     }
+    
+    loadGame();
   }, [gameId]);
   
   /**
    * Update the game
    */
-  const updateGame = useCallback((updatedGame: Game): boolean => {
+  const updateGame = useCallback(async (updatedGame: Game): Promise<boolean> => {
     if (!updatedGame) return false;
     
     // Update timestamp
@@ -238,6 +458,39 @@ export function useSingleGame(gameId: string | null) {
       updatedAt: Date.now()
     };
     
+    // First try API
+    try {
+      const response = await fetch(`/api/games/${updatedGame.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ game: gameWithTimestamp }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.success && data.game) {
+          console.log(`Successfully updated game ${updatedGame.id} via API`);
+          setGame(data.game);
+          
+          // Update local storage for offline access
+          storageService.game.saveGame(data.game);
+          
+          return true;
+        } else {
+          console.warn('API response was OK but data format was unexpected:', data);
+        }
+      } else {
+        console.warn(`API returned status ${response.status} when updating game ${updatedGame.id}`);
+      }
+    } catch (apiError) {
+      console.error(`Failed to update game ${updatedGame.id} via API, falling back to local storage:`, apiError);
+    }
+    
+    // Fall back to local storage
+    console.log(`Updating game ${updatedGame.id} in local storage`);
     const success = storageService.game.saveGame(gameWithTimestamp);
     
     if (success) {
@@ -250,10 +503,38 @@ export function useSingleGame(gameId: string | null) {
   /**
    * Refresh game data from storage
    */
-  const refreshGame = useCallback(() => {
+  const refreshGame = useCallback(async () => {
     if (!gameId) return;
     
     try {
+      // First try API
+      try {
+        const response = await fetch(`/api/games/${gameId}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          
+          if (data.success && data.game) {
+            console.log(`Refreshed game ${gameId} from API`);
+            setGame(data.game);
+            
+            // Update local storage for offline access
+            storageService.game.saveGame(data.game);
+            
+            setError(null);
+            return;
+          } else {
+            console.warn('API response was OK but data format was unexpected:', data);
+          }
+        } else {
+          console.warn(`API returned status ${response.status} when refreshing game ${gameId}`);
+        }
+      } catch (apiError) {
+        console.error(`Failed to refresh game ${gameId} from API, falling back to local storage:`, apiError);
+      }
+      
+      // Fall back to local storage
+      console.log(`Refreshing game ${gameId} from local storage`);
       const gameData = storageService.game.getGame(gameId);
       setGame(gameData);
       setError(null);

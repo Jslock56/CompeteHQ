@@ -25,7 +25,7 @@ export async function POST(
     }
 
     // Get team ID from route params
-    const teamId = params.id;
+    const teamId = Array.isArray(params.id) ? params.id[0] : params.id;
     console.log(`Setting default lineup for team: ${teamId}`);
     
     // Get lineup ID from request body

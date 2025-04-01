@@ -362,14 +362,32 @@ export const useLineup = ({
       // First try to save to API
       try {
         console.log(`Attempting to save lineup to API with ID: ${lineupToSave.id}, name: ${lineupToSave.name}, teamId: ${lineupToSave.teamId}`);
-        console.log(`Using ${lineupToSave.id ? 'PUT' : 'POST'} method for lineup`);
         
-        const response = await fetch('/api/lineups', {
-          method: lineupToSave.id ? 'PUT' : 'POST',
+        let apiUrl;
+        let method;
+        
+        // If this is a game-specific lineup, use the game lineup API
+        if (lineupToSave.gameId) {
+          apiUrl = `/api/games/${lineupToSave.gameId}/lineup`;
+          method = lineupToSave.id ? 'PUT' : 'POST';
+          console.log(`Using game-specific lineup API: ${apiUrl} with method ${method}`);
+        } else {
+          // For non-game lineups, use the direct non-game API
+          apiUrl = `/api/lineups/non-game`;
+          method = lineupToSave.id ? 'PUT' : 'POST';
+          console.log(`Using direct non-game lineup API: ${apiUrl} with method ${method}`);
+        }
+        
+        console.log(`Sending request to ${apiUrl} with method ${method}`);
+        console.log(`Request payload: ${JSON.stringify({ lineup: lineupToSave }, null, 2)}`);
+        
+        const response = await fetch(apiUrl, {
+          method,
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(lineupToSave),
+          body: JSON.stringify({ lineup: lineupToSave }),
+          credentials: 'include' // Ensure cookies are sent with the request
         });
         
         if (response.ok) {
@@ -449,15 +467,16 @@ export const useFieldPositionLineups = (teamId: string) => {
     setError(null);
     
     try {
-      // First try to load from API
+      // First try to load from API using the dedicated non-game lineups endpoint
       try {
-        const response = await fetch(`/api/teams/${teamId}/lineups?type=non-game`);
+        console.log(`Fetching non-game lineups for team ${teamId} using dedicated API endpoint`);
+        const response = await fetch(`/api/lineups/non-game?teamId=${teamId}`);
         
         if (response.ok) {
           const data = await response.json();
           
           if (data.success && Array.isArray(data.lineups)) {
-            console.log(`Loaded ${data.lineups.length} lineups from API`);
+            console.log(`Loaded ${data.lineups.length} non-game lineups from dedicated API endpoint`);
             setLineups(data.lineups);
             
             // Update local storage with the API data for offline access
@@ -467,16 +486,53 @@ export const useFieldPositionLineups = (teamId: string) => {
             
             setIsLoading(false);
             return;
+          } else {
+            console.warn('API response was OK but data format was unexpected:', data);
           }
         } else {
-          console.warn(`API returned status ${response.status} when loading lineups`);
+          console.warn(`API returned status ${response.status} when loading non-game lineups`);
+          try {
+            const errorData = await response.json();
+            console.warn('Error details:', errorData);
+          } catch (e) {
+            console.warn('Could not parse error response:', e);
+          }
         }
       } catch (apiError) {
-        console.error('Failed to load lineups from API, falling back to local storage:', apiError);
+        console.error('Failed to load non-game lineups from dedicated API, will try legacy endpoint:', apiError);
       }
       
-      // Fall back to local storage if API fails
-      console.log('Loading lineups from local storage');
+      // Try the legacy endpoint as a fallback
+      try {
+        console.log(`Trying legacy API endpoint for non-game lineups: /api/teams/${teamId}/lineups?type=non-game`);
+        const response = await fetch(`/api/teams/${teamId}/lineups?type=non-game`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          
+          if (data.success && Array.isArray(data.lineups)) {
+            console.log(`Loaded ${data.lineups.length} lineups from legacy API endpoint`);
+            setLineups(data.lineups);
+            
+            // Update local storage with the API data for offline access
+            data.lineups.forEach((lineup: Lineup) => {
+              storageService.lineup.saveLineup(lineup);
+            });
+            
+            setIsLoading(false);
+            return;
+          } else {
+            console.warn('Legacy API response was OK but data format was unexpected:', data);
+          }
+        } else {
+          console.warn(`Legacy API endpoint returned status ${response.status} when loading lineups`);
+        }
+      } catch (legacyApiError) {
+        console.error('Failed to load lineups from legacy API endpoint, falling back to local storage:', legacyApiError);
+      }
+      
+      // Fall back to local storage if all API attempts fail
+      console.log('Loading lineups from local storage as last resort');
       const teamLineups = storageService.lineup.getNonGameLineupsByTeam(teamId);
       setLineups(teamLineups);
     } catch (err) {
@@ -492,19 +548,20 @@ export const useFieldPositionLineups = (teamId: string) => {
     if (!teamId) return false;
     
     try {
-      // First try to set default via API
+      // First try to set default via the dedicated non-game API
       try {
-        const response = await fetch(`/api/teams/${teamId}/lineups/default`, {
+        console.log(`Setting default lineup using dedicated non-game API: ${lineupId} for team ${teamId}`);
+        const response = await fetch(`/api/lineups/non-game/default`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ lineupId })
+          body: JSON.stringify({ lineupId, teamId })
         });
         
         if (response.ok) {
           const data = await response.json();
           
           if (data.success) {
-            console.log('Set default lineup via API successfully');
+            console.log('Set default lineup via dedicated non-game API successfully');
             
             // Also update local storage
             await storageService.lineup.setDefaultTeamLineup(lineupId, teamId);
@@ -520,10 +577,51 @@ export const useFieldPositionLineups = (teamId: string) => {
             return true;
           }
         } else {
-          console.warn(`API returned status ${response.status} when setting default lineup`);
+          console.warn(`Dedicated API returned status ${response.status} when setting default lineup`);
+          try {
+            const errorData = await response.json();
+            console.warn('Error details:', errorData);
+          } catch (e) {
+            console.warn('Could not parse error response:', e);
+          }
         }
       } catch (apiError) {
-        console.error('Failed to set default lineup via API, falling back to local storage:', apiError);
+        console.error('Failed to set default lineup via dedicated API, will try legacy endpoint:', apiError);
+      }
+      
+      // Try the legacy endpoint as a fallback
+      try {
+        console.log(`Trying legacy API endpoint for setting default lineup: /api/teams/${teamId}/lineups/default`);
+        const response = await fetch(`/api/teams/${teamId}/lineups/default`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lineupId })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          
+          if (data.success) {
+            console.log('Set default lineup via legacy API successfully');
+            
+            // Also update local storage
+            await storageService.lineup.setDefaultTeamLineup(lineupId, teamId);
+            
+            // Update local state
+            setLineups(currentLineups => 
+              currentLineups.map(lineup => ({
+                ...lineup,
+                isDefault: lineup.id === lineupId
+              }))
+            );
+            
+            return true;
+          }
+        } else {
+          console.warn(`Legacy API endpoint returned status ${response.status} when setting default lineup`);
+        }
+      } catch (legacyApiError) {
+        console.error('Failed to set default lineup via legacy API, falling back to local storage:', legacyApiError);
       }
       
       // Fall back to local storage

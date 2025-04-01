@@ -51,6 +51,7 @@ import { useTeamContext } from '../../../contexts/team-context';
 import SportIcon from '../../../components/common/sport-icon';
 import TeamBadges from '../../../components/common/team-badges';
 import LoadingSpinner from '../../../components/common/loading-spinner';
+import Calendar from '../../../components/common/calendar';
 
 // Interface for team data
 interface Team {
@@ -173,11 +174,16 @@ const DashboardPage = () => {
     setIsLoading(true);
     
     try {
+      console.log(`Fetching team details for team ID: ${teamId}`);
+      
+      // Fetch games using the team-specific endpoint
+      let gamesPromise = fetch(`/api/teams/${teamId}/games`);
+      
       // Fetch team details, games, and members
       const [teamResponse, membersResponse, gamesResponse] = await Promise.all([
         fetch(`/api/teams/${teamId}`),
         fetch(`/api/teams/${teamId}/members?status=active`),
-        fetch(`/api/teams/${teamId}/games`)
+        gamesPromise
       ]);
       
       // Process team details (including user permissions)
@@ -206,17 +212,45 @@ const DashboardPage = () => {
       // Process games
       if (gamesResponse.ok) {
         const gamesData = await gamesResponse.json();
+        console.log("Games data from API:", gamesData);
+        
         if (gamesData.games) {
-          const now = new Date();
-          const upcoming = gamesData.games
-            .filter((game: any) => new Date(game.date) >= now)
-            .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+          // Since we're using the team-specific endpoint, all games should already be for this team
+          // We don't need to filter by teamId anymore
+          
+          // Ensure all dates are numbers for consistent comparison
+          const gamesWithValidDates = gamesData.games.map((game: any) => {
+            // Convert string or Date objects to number timestamps if needed
+            if (game.date && typeof game.date !== 'number') {
+              try {
+                game.date = new Date(game.date).getTime();
+                console.log(`Converted date for game ${game.id} to timestamp: ${game.date}`);
+              } catch (e) {
+                console.error(`Failed to convert date for game ${game.id}:`, e);
+              }
+            }
+            return game;
+          });
+          
+          const now = Date.now(); // Use timestamp for comparison
+          
+          // Debug log to see what's in the games array
+          console.log(`Processing ${gamesWithValidDates.length} games from API for team ${teamId}. Current timestamp: ${now}`);
+          gamesWithValidDates.forEach((game: any) => {
+            console.log(`Game: ${game.id}, Team: ${game.teamId}, Opponent: ${game.opponent}, Date: ${game.date}, Now: ${now}, IsUpcoming: ${game.date >= now}`);
+          });
+          
+          const upcoming = gamesWithValidDates
+            .filter((game: any) => typeof game.date === 'number' && game.date >= now) // Ensure date is a number and compare
+            .sort((a: any, b: any) => a.date - b.date) // Sort ascending for upcoming
             .slice(0, 3);
             
-          const recent = gamesData.games
-            .filter((game: any) => new Date(game.date) < now && game.result)
-            .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
+          const recent = gamesWithValidDates
+            .filter((game: any) => typeof game.date === 'number' && game.date < now && game.result)
+            .sort((a: any, b: any) => b.date - a.date) // Sort descending for recent
             .slice(0, 3);
+            
+          console.log(`Found ${upcoming.length} upcoming games and ${recent.length} recent games`);
             
           setUpcomingGames(upcoming.map((game: any) => ({
             id: game.id,
@@ -493,44 +527,30 @@ const DashboardPage = () => {
               </CardBody>
             </Card>
 
-            {/* Team Stats Card */}
-            <Card>
-              <CardHeader pb={0}>
-                <Heading size="md">Team Stats</Heading>
-              </CardHeader>
-              <CardBody>
-                <SimpleGrid columns={2} spacing={4}>
-                  <Stat>
-                    <StatLabel>Players</StatLabel>
-                    <StatNumber>12</StatNumber>
-                    <StatHelpText>
-                      Active roster
-                    </StatHelpText>
-                  </Stat>
-                  <Stat>
-                    <StatLabel>Record</StatLabel>
-                    <StatNumber>3-2</StatNumber>
-                    <StatHelpText>
-                      This season
-                    </StatHelpText>
-                  </Stat>
-                  <Stat>
-                    <StatLabel>Next Game</StatLabel>
-                    <StatNumber>{upcomingGames.length > 0 ? new Date(upcomingGames[0].date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'None'}</StatNumber>
-                    <StatHelpText>
-                      {upcomingGames.length > 0 ? upcomingGames[0].opponent : 'No upcoming games'}
-                    </StatHelpText>
-                  </Stat>
-                  <Stat>
-                    <StatLabel>Last Practice</StatLabel>
-                    <StatNumber>Jun 15</StatNumber>
-                    <StatHelpText>
-                      Batting focus
-                    </StatHelpText>
-                  </Stat>
-                </SimpleGrid>
-              </CardBody>
-            </Card>
+            {/* Calendar Card */}
+            <Box>
+              <Calendar 
+                events={
+                  [...(upcomingGames || []), ...(recentGames || [])].map(game => {
+                    try {
+                      const gameDate = new Date(game.date);
+                      return {
+                        date: gameDate.getDate(),       // Day of month
+                        month: gameDate.getMonth(),     // Month (0-11)
+                        year: gameDate.getFullYear(),   // Year
+                        title: `vs ${game.opponent}`,
+                        opponent: game.opponent,
+                        location: game.location || "TBD",
+                        isHome: game.isHome || false,
+                      };
+                    } catch (error) {
+                      console.error("Error processing game data:", error);
+                      return null;
+                    }
+                  }).filter(Boolean)
+                }
+              />
+            </Box>
 
             {/* Team Members Card */}
             <Card>

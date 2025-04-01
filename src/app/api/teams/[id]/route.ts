@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import mongoDBService from '../../../../services/database/mongodb';
-import { getCurrentUser } from '../../auth/me/route';
+import { connectMongoDB } from '../../../../services/database/mongodb';
+import { getCurrentUser } from '../../../../services/auth/api-auth';
 import { TeamMembership } from '../../../../models/team-membership';
 
 /**
@@ -14,8 +14,10 @@ export async function GET(
 ) {
   try {
     // Connect to MongoDB
-    await mongoDBService.connect();
-    if (!mongoDBService.isConnectedToDatabase()) {
+    try {
+      await connectMongoDB();
+    } catch (error) {
+      console.error('Database connection error:', error);
       return NextResponse.json(
         { success: false, message: 'Database connection failed' },
         { status: 500 }
@@ -32,10 +34,13 @@ export async function GET(
     }
 
     // Get team ID from route params
-    const teamId = params.id;
+    const teamId = Array.isArray(params.id) ? params.id[0] : params.id;
+    
+    // Import Team model
+    const { Team } = await import('../../../../models/team');
     
     // Fetch the team
-    const team = await mongoDBService.getTeam(teamId);
+    const team = await Team.findOne({ id: teamId });
     if (!team) {
       return NextResponse.json(
         { success: false, message: 'Team not found' },
