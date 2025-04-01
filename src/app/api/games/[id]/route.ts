@@ -15,11 +15,12 @@ export async function GET(
     await mongoDBService.connect();
     
     // Get the game ID from route params
-    const gameId = Array.isArray(params.id) ? params.id[0] : params.id;
+    const gameParams = await params;
+    const gameId = Array.isArray(gameParams.id) ? gameParams.id[0] : gameParams.id;
     console.log(`Getting game with ID: ${gameId}`);
     
     // Get the current user from cookies
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const user = await getCurrentUser(request, cookieStore);
     
     if (!user && process.env.NODE_ENV === 'production') {
@@ -74,11 +75,12 @@ export async function PUT(
     await mongoDBService.connect();
     
     // Get the game ID from route params
-    const gameId = Array.isArray(params.id) ? params.id[0] : params.id;
+    const gameParams = await params;
+    const gameId = Array.isArray(gameParams.id) ? gameParams.id[0] : gameParams.id;
     console.log(`Updating game with ID: ${gameId}`);
     
     // Get the current user from cookies
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const user = await getCurrentUser(request, cookieStore);
     
     if (!user && process.env.NODE_ENV === 'production') {
@@ -188,11 +190,12 @@ export async function DELETE(
     await mongoDBService.connect();
     
     // Get the game ID from route params
-    const gameId = Array.isArray(params.id) ? params.id[0] : params.id;
+    const gameParams = await params;
+    const gameId = Array.isArray(gameParams.id) ? gameParams.id[0] : gameParams.id;
     console.log(`Deleting game with ID: ${gameId}`);
     
     // Get the current user from cookies
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const user = await getCurrentUser(request, cookieStore);
     
     if (!user && process.env.NODE_ENV === 'production') {

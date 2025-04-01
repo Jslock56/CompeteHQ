@@ -25,7 +25,8 @@ export async function GET(
     }
 
     // Get current user from authentication
-    const user = await getCurrentUser(request, cookies());
+    const cookieStore = await cookies();
+    const user = await getCurrentUser(request, cookieStore);
     if (!user) {
       return NextResponse.json(
         { success: false, message: 'Authentication required' },
@@ -33,8 +34,9 @@ export async function GET(
       );
     }
 
-    // Get team ID from route params
-    const teamId = Array.isArray(params.id) ? params.id[0] : params.id;
+    // Get team ID from route params - await params to properly access its properties
+    const teamParams = await params;
+    const teamId = Array.isArray(teamParams.id) ? teamParams.id[0] : teamParams.id;
     
     // Import Team model
     const { Team } = await import('../../../../models/team');

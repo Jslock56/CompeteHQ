@@ -18,7 +18,7 @@ import {
   generatePositionHeatmap,
   generatePositionTypeChart
 } from '../utils/position-visualization';
-import { positionHistoryStorage } from '../services/storage/enhanced-storage';
+import { storageAdapter } from '../services/database/storage-adapter';
 
 /**
  * Hook for accessing a player's position tracking data
@@ -33,12 +33,31 @@ export const usePlayerPositionTracking = (
   const gamesWithPositions = useMemo(() => {
     if (!playerId || !games.length) return [];
     
-    // Try to use the stored position history
+    // Try to use position history from MongoDB via API
     try {
-      // First, check if we have stored position history
-      const storedHistory = positionHistoryStorage.getPositionHistory(playerId);
+      // Fetch position history from API
+      const fetchPositionHistory = async () => {
+        try {
+          const response = await fetch(`/api/players/position-history?playerId=${playerId}`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.positionHistory) {
+              return data.positionHistory;
+            }
+          }
+          return null;
+        } catch (e) {
+          console.error("Error fetching position history from API:", e);
+          return null;
+        }
+      };
+
+      // Use a promise to handle async in useMemo
+      const storedHistoryPromise = fetchPositionHistory();
+      const storedHistory = await storedHistoryPromise;
+      
       if (storedHistory && storedHistory.gamePositions && storedHistory.gamePositions.length > 0) {
-        console.log("Found stored position history for player:", playerId, storedHistory.gamePositions.length, "games");
+        console.log("Found position history for player:", playerId, storedHistory.gamePositions.length, "games");
         // Convert stored history to GameWithPosition format
         return storedHistory.gamePositions.map(gamePos => {
           const game = games.find(g => g.id === gamePos.gameId);
@@ -52,7 +71,7 @@ export const usePlayerPositionTracking = (
         });
       }
     } catch (error) {
-      console.error("Error accessing stored position history:", error);
+      console.error("Error accessing position history:", error);
     }
     
     console.log("Calculating position history from scratch for player:", playerId);
@@ -134,11 +153,28 @@ export const useTeamPositionTracking = (
     // Only process active players
     const activePlayers = players.filter(p => p.active);
     
-    // Try to use stored position histories
+    // Try to use position histories from MongoDB via API
     try {
-      const storedHistories = positionHistoryStorage.getTeamPositionHistories(teamId);
+      const fetchTeamPositionHistories = async () => {
+        try {
+          const response = await fetch(`/api/players/position-history/team?teamId=${teamId}`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && Array.isArray(data.positionHistories)) {
+              return data.positionHistories;
+            }
+          }
+          return [];
+        } catch (e) {
+          console.error("Error fetching team position histories from API:", e);
+          return [];
+        }
+      };
+      
+      const storedHistories = await fetchTeamPositionHistories();
+      
       if (storedHistories && storedHistories.length > 0) {
-        console.log("Found stored team position histories:", storedHistories.length);
+        console.log("Found team position histories from API:", storedHistories.length);
         const storedHistoriesByPlayer = Object.fromEntries(
           storedHistories.map(history => [history.playerId, history])
         );
@@ -164,7 +200,7 @@ export const useTeamPositionTracking = (
           }
         });
       } else {
-        console.log("No stored team position histories, calculating from scratch");
+        console.log("No team position histories found in database, calculating from scratch");
         // Calculate all from scratch
         activePlayers.forEach(player => {
           playerGames[player.id] = getGamesWithPositions(player.id, games, lineups);

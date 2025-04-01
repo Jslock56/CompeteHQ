@@ -1,3 +1,5 @@
+import { Position } from './shared-types';
+
 export interface Player {
     id: string;
     teamId: string;
@@ -13,16 +15,3 @@ export interface Player {
     createdAt: number; // timestamp
     updatedAt: number; // timestamp
   }
-  
-  export type Position = 
-    | 'P'  // Pitcher
-    | 'C'  // Catcher
-    | '1B' // First Base
-    | '2B' // Second Base
-    | '3B' // Third Base
-    | 'SS' // Shortstop
-    | 'LF' // Left Field
-    | 'CF' // Center Field
-    | 'RF' // Right Field
-    | 'DH' // Designated Hitter
-    | 'BN'; // Bench

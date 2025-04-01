@@ -17,11 +17,12 @@ export async function GET(
     await mongoDBService.connect();
     
     // Get the game ID from route params
-    const gameId = Array.isArray(params.id) ? params.id[0] : params.id;
+    const gameParams = await params;
+    const gameId = Array.isArray(gameParams.id) ? gameParams.id[0] : gameParams.id;
     console.log(`Getting lineup for game: ${gameId}`);
     
     // Get the current user from cookies
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const user = await getCurrentUser(request, cookieStore);
     
     if (!user) {
@@ -118,11 +119,12 @@ export async function POST(
     await mongoDBService.connect();
     
     // Get the game ID from route params
-    const gameId = Array.isArray(params.id) ? params.id[0] : params.id;
+    const gameParams = await params;
+    const gameId = Array.isArray(gameParams.id) ? gameParams.id[0] : gameParams.id;
     console.log(`Creating lineup for game: ${gameId}`);
     
     // Get the current user from cookies
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const user = await getCurrentUser(request, cookieStore);
     
     if (!user) {
@@ -232,6 +234,19 @@ export async function POST(
       }
     }
     
+    // Update position history for all players in this game
+    try {
+      // Import the position history service
+      const { positionHistoryService } = await import('../../../../../services/position/position-history-service');
+      
+      // Update position history
+      await positionHistoryService.updatePositionHistory(gameId, lineup);
+      console.log('Updated position history for game lineup');
+    } catch (positionHistoryError) {
+      console.error('Error updating position history:', positionHistoryError);
+      // Don't fail the overall save if position history update fails
+    }
+    
     return Response.json(
       { success: true, lineup },
       { status: 201 }
@@ -257,11 +272,12 @@ export async function PUT(
     await mongoDBService.connect();
     
     // Get the game ID from route params
-    const gameId = Array.isArray(params.id) ? params.id[0] : params.id;
+    const gameParams = await params;
+    const gameId = Array.isArray(gameParams.id) ? gameParams.id[0] : gameParams.id;
     console.log(`Updating lineup for game: ${gameId}`);
     
     // Get the current user from cookies
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const user = await getCurrentUser(request, cookieStore);
     
     if (!user) {
@@ -366,6 +382,19 @@ export async function PUT(
       }
     }
     
+    // Update position history for all players in this game
+    try {
+      // Import the position history service
+      const { positionHistoryService } = await import('../../../../../services/position/position-history-service');
+      
+      // Update position history
+      await positionHistoryService.updatePositionHistory(gameId, lineup);
+      console.log('Updated position history for game lineup');
+    } catch (positionHistoryError) {
+      console.error('Error updating position history:', positionHistoryError);
+      // Don't fail the overall save if position history update fails
+    }
+    
     return Response.json(
       { success: true, lineup },
       { status: 200 }
@@ -391,11 +420,12 @@ export async function DELETE(
     await mongoDBService.connect();
     
     // Get the game ID from route params
-    const gameId = Array.isArray(params.id) ? params.id[0] : params.id;
+    const gameParams = await params;
+    const gameId = Array.isArray(gameParams.id) ? gameParams.id[0] : gameParams.id;
     console.log(`Deleting lineup for game: ${gameId}`);
     
     // Get the current user from cookies
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const user = await getCurrentUser(request, cookieStore);
     
     if (!user) {
@@ -483,17 +513,12 @@ export async function DELETE(
       }
     }
     
-    // As a last resort, try to delete from local storage
+    // If we couldn't delete, log the error but don't block the operation
     if (!deleted) {
-      try {
-        console.log(`MongoDB deletion failed, trying to access local storage as a fallback...`);
-        // This API approach can't directly access local storage since it's server-side
-        // But we'll mark it as deleted anyway and update the game reference
-        deleted = true;
-        console.log(`Marking lineup as deleted and proceeding with game reference removal`);
-      } catch (localStorageError) {
-        console.error('Error with local storage fallback:', localStorageError);
-      }
+      console.warn(`Could not delete lineup from either gameLineups or lineups collection`);
+      // Continue to remove the game reference regardless, as this is most important
+      deleted = true;
+      console.log(`Proceeding with game reference removal`);
     }
     
     // Update the game to remove the lineup reference

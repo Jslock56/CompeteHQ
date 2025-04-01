@@ -1,3 +1,13 @@
+/**
+ * ⚠️ DEPRECATED ⚠️
+ *
+ * This module is deprecated and should not be used for new development.
+ * CompeteHQ is now a cloud-based application with MongoDB as the primary storage mechanism.
+ * Local storage capabilities will be added in a future version for specific offline functionality.
+ * 
+ * Use the MongoDB services directly or through the storage adapter instead.
+ */
+
 // Import the IndexedDB helper from the 'idb' library for easier, promise-based usage
 import { openDB, IDBPDatabase, DBSchema } from 'idb';
 

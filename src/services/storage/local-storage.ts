@@ -1,4 +1,13 @@
 // src/services/storage/local-storage.ts
+/**
+ * ⚠️ DEPRECATED ⚠️
+ * 
+ * This module is deprecated and should not be used for new development.
+ * CompeteHQ is now a cloud-based application with MongoDB as the primary storage mechanism.
+ * Local storage capabilities will be added in a future version for specific offline functionality.
+ * 
+ * Use the MongoDB services directly or through the storage adapter instead.
+ */
 export const STORAGE_KEYS = {
     CURRENT_TEAM: 'competehq_current_team',
     TEAMS: 'competehq_teams', // Array of team IDs

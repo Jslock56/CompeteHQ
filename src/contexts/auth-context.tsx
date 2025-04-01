@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Permission } from '../models/user';
-import { STORAGE_KEYS } from '../services/storage/local-storage';
+// Note: Authentication is now cookie-based, no localStorage token storage
 
 // User interface for MongoDB integration
 interface User {
@@ -88,28 +88,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setIsLoading(true);
       
       try {
-        const response = await fetch('/api/auth/me');
+        // Use the combined endpoint to fetch both user and memberships at once
+        const response = await fetch('/api/auth/me-with-memberships');
         
         if (response.ok) {
           const data = await response.json();
+          console.log('Auth check successful, user data:', data.user);
           
-          if (data.success && data.user) {
-            console.log('Auth check successful, user data:', data.user);
-            setUser(data.user);
-            
-            // If there's an active team, load team memberships
-            if (data.user.activeTeamId) {
-              console.log('User has activeTeamId:', data.user.activeTeamId);
-              loadTeamMemberships(data.user);
-            } else if (data.user.teams && data.user.teams.length > 0) {
-              console.log('User has teams but no active team:', data.user.teams);
-              // Auto-set the first team if they have teams but no active
-              const firstTeam = data.user.teams[0];
-              changeActiveTeam(firstTeam);
-            }
-          } else {
-            setUser(null);
-            setTeamMemberships({});
+          // Process the combined user data
+          processCombinedUserData(data);
+          
+          // Handle setting first team as active if needed
+          if (data.success && data.user && data.user.teams && data.user.teams.length > 0 && !data.user.activeTeamId) {
+            console.log('User has teams but no active team, setting first team');
+            const firstTeam = data.user.teams[0];
+            changeActiveTeam(firstTeam);
           }
         } else {
           setUser(null);
@@ -127,54 +120,38 @@ export function AuthProvider({ children }: AuthProviderProps) {
     checkAuthStatus();
   }, []);
   
-  // Load team memberships and set active team when user or activeTeamId changes
-  const loadTeamMemberships = async (currentUser: User) => {
-    if (!currentUser) {
-      setActiveTeam(null);
-      return;
-    }
+  // Helper function to process user and memberships data from the combined endpoint
+  const processCombinedUserData = (data: any) => {
+    if (!data.success || !data.user) return;
     
-    try {
-      console.log('Loading team memberships for user:', currentUser.id);
-      const response = await fetch('/api/teams/memberships');
+    // Update user data
+    setUser(data.user);
+    
+    // Process memberships from the combined response
+    if (data.memberships && data.teams) {
+      // Convert array to record for easier lookup
+      const membershipsRecord: Record<string, TeamMembership> = {};
       
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Team memberships API response:', data);
+      data.memberships.forEach((membership: TeamMembership) => {
+        membershipsRecord[membership.teamId] = membership;
+      });
+      
+      setTeamMemberships(membershipsRecord);
+      
+      // Set active team info if the user has an active team
+      if (data.user.activeTeamId && membershipsRecord[data.user.activeTeamId]) {
+        const activeTeamData = data.teams.find((t: any) => t.id === data.user.activeTeamId);
         
-        if (data.success && data.memberships) {
-          // Convert array to record for easier lookup
-          const membershipsRecord: Record<string, TeamMembership> = {};
-          
-          data.memberships.forEach((membership: TeamMembership) => {
-            membershipsRecord[membership.teamId] = membership;
+        if (activeTeamData) {
+          console.log('Setting active team:', activeTeamData.id);
+          setActiveTeam({
+            id: activeTeamData.id,
+            name: activeTeamData.name,
+            role: membershipsRecord[data.user.activeTeamId].role,
+            permissions: membershipsRecord[data.user.activeTeamId].permissions
           });
-          
-          setTeamMemberships(membershipsRecord);
-          
-          // Set active team info if the user has an active team
-          if (currentUser.activeTeamId && membershipsRecord[currentUser.activeTeamId]) {
-            const activeTeamData = data.teams.find((t: any) => t.id === currentUser.activeTeamId);
-            
-            if (activeTeamData) {
-              console.log('Setting active team:', activeTeamData.id);
-              setActiveTeam({
-                id: activeTeamData.id,
-                name: activeTeamData.name,
-                role: membershipsRecord[currentUser.activeTeamId].role,
-                permissions: membershipsRecord[currentUser.activeTeamId].permissions
-              });
-            }
-          } else if (data.teams && data.teams.length > 0 && !currentUser.activeTeamId) {
-            // If user has teams but no active team set, suggest the first team
-            console.log('No active team, but user has teams. First team:', data.teams[0].id);
-          }
         }
-      } else {
-        console.error('Error fetching team memberships:', await response.text());
       }
-    } catch (error) {
-      console.error('Error loading team memberships:', error);
     }
   };
 
@@ -202,14 +179,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Set user from response
         setUser(data.user);
         
-        // Store token in localStorage for API calls
-        if (data.token && typeof window !== 'undefined') {
-          localStorage.setItem('authToken', data.token);
-        }
+        // Using HTTP-only cookies for authentication
+        // Token is handled by the server, no client-side storage needed
         
-        // If user has teams, load memberships
+        // If user has teams, load user and memberships from the combined endpoint
         if (data.user.teams?.length > 0) {
-          await loadTeamMemberships(data.user);
+          // Call the combined endpoint to get full user data with memberships
+          const combinedResponse = await fetch('/api/auth/me-with-memberships');
+          if (combinedResponse.ok) {
+            const combinedData = await combinedResponse.json();
+            // Process the combined user data
+            processCombinedUserData(combinedData);
+          }
         }
         
         // Debug: log current state
@@ -293,14 +274,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Set user from response
         setUser(data.user);
         
-        // Store token in localStorage for API calls
-        if (data.token && typeof window !== 'undefined') {
-          localStorage.setItem('authToken', data.token);
-        }
+        // Using HTTP-only cookies for authentication
+        // Token is handled by the server, no client-side storage needed
         
         // If invited to a team, active team will be set
         if (data.user.activeTeamId) {
-          await loadTeamMemberships(data.user);
+          // Call the combined endpoint to get full user data with memberships
+          const combinedResponse = await fetch('/api/auth/me-with-memberships');
+          if (combinedResponse.ok) {
+            const combinedData = await combinedResponse.json();
+            // Process the combined user data
+            processCombinedUserData(combinedData);
+          }
           router.push('/dashboard');
         } else {
           // New user without a team - redirect to role selection
@@ -352,15 +337,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
     if (!isAuthenticated) return;
     
     try {
-      const response = await fetch('/api/auth/me');
+      // Use the combined endpoint to fetch both user and memberships at once
+      const response = await fetch('/api/auth/me-with-memberships');
       
       if (response.ok) {
         const data = await response.json();
         
-        if (data.success && data.user) {
-          setUser(data.user);
-          loadTeamMemberships(data.user);
-        }
+        // Process the combined user data
+        processCombinedUserData(data);
       }
     } catch (error) {
       console.error('Error refreshing user:', error);
@@ -376,19 +360,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setIsLoading(true);
     
     try {
-      // First update localStorage to ensure UI consistency
-      try {
-        // Use correct key from STORAGE_KEYS for consistent localStorage access
-        localStorage.setItem(STORAGE_KEYS.CURRENT_TEAM, teamId);
-        console.log(`Directly set localStorage[${STORAGE_KEYS.CURRENT_TEAM}] to:`, teamId);
-        
-        // Load enhanced storage service and use it as well for any event dispatching
-        const storageService = (await import('../services/storage/enhanced-storage')).storageService;
-        storageService.team.setCurrentTeam(teamId);
-      } catch (localStorageError) {
-        console.error('Error updating localStorage:', localStorageError);
-        // Continue anyway - the API call is more important
-      }
+      // All team selection is handled server-side
+      // No need for local storage as MongoDB is the source of truth
+      console.log(`Preparing to set active team via API: ${teamId}`);
+      // Custom event for UI updates will be triggered after API success
       
       // Then update MongoDB via API
       console.log(`Making API call to set active team to: ${teamId}`);
@@ -425,18 +400,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
           };
         });
         
-        // Reload team memberships
-        if (user) {
-          const updatedUser = { 
-            ...user, 
-            activeTeamId: teamId,
-            teams: user.teams.includes(teamId) ? user.teams : [...user.teams, teamId]
-          };
-          await loadTeamMemberships(updatedUser);
+        // Reload user and memberships using the combined endpoint
+        try {
+          const combinedResponse = await fetch('/api/auth/me-with-memberships');
+          if (combinedResponse.ok) {
+            const combinedData = await combinedResponse.json();
+            // Process the combined user data
+            processCombinedUserData(combinedData);
+          }
+        } catch (error) {
+          console.error('Error loading combined data after team change:', error);
         }
         
-        // Set a localStorage flag to indicate team switch has occurred
-        localStorage.setItem('LAST_TEAM_SWITCH', Date.now().toString());
+        // Trigger event for team switch - no localStorage needed
         
         // Trigger the UserEvent for team change
         window.dispatchEvent(new CustomEvent('team-changed', { detail: { teamId } }));

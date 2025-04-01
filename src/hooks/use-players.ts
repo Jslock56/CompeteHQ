@@ -1,11 +1,11 @@
 /**
  * Custom hook for player management
  * Provides methods for creating, reading, updating, and deleting players
+ * using MongoDB as the data store
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { storageService } from '../services/storage/enhanced-storage';
 import { Player, Position } from '../types/player';
 import { useTeamContext } from '../contexts/team-context';
 
@@ -79,7 +79,7 @@ export function usePlayers(): UsePlayersResult {
   const [error, setError] = useState<string | null>(null);
   
   /**
-   * Load all players for the current team
+   * Load all players for the current team from MongoDB
    */
   const loadPlayers = useCallback(async () => {
     if (!currentTeam) {
@@ -91,34 +91,27 @@ export function usePlayers(): UsePlayersResult {
     try {
       setIsLoading(true);
       
-      // Try to load from API first
-      try {
-        const response = await fetch(`/api/teams/players?teamId=${currentTeam.id}`);
-        const data = await response.json();
-        
-        if (data.success && Array.isArray(data.players)) {
-          console.log('Loaded players from API:', data.players.length);
-          setPlayers(data.players);
-          setError(null);
-          
-          // Update local storage with the API data
-          data.players.forEach((player: Player) => {
-            storageService.player.savePlayer(player);
-          });
-          
-          setIsLoading(false);
-          return;
-        }
-      } catch (apiError) {
-        console.error('Failed to load players from API, falling back to local storage:', apiError);
+      // Load from MongoDB via API
+      const response = await fetch(`/api/teams/players?teamId=${currentTeam.id}`);
+      
+      if (!response.ok) {
+        throw new Error(`Error fetching players: ${response.status} ${response.statusText}`);
       }
       
-      // Fall back to local storage
-      const teamPlayers = storageService.player.getPlayersByTeam(currentTeam.id);
-      setPlayers(teamPlayers);
-      setError(null);
+      const data = await response.json();
+      
+      if (data.success && Array.isArray(data.players)) {
+        console.log('Loaded players from MongoDB:', data.players.length);
+        setPlayers(data.players);
+        setError(null);
+      } else {
+        throw new Error(data.message || 'Failed to load players from database');
+      }
     } catch (err) {
+      console.error('Failed to load players:', err);
       setError('Failed to load players: ' + String(err));
+      // Provide empty array as fallback
+      setPlayers([]);
     } finally {
       setIsLoading(false);
     }
@@ -128,8 +121,9 @@ export function usePlayers(): UsePlayersResult {
    * Get a single player by ID
    */
   const getPlayer = useCallback((playerId: string): Player | null => {
-    return storageService.player.getPlayer(playerId);
-  }, []);
+    // Find player in the already loaded players array
+    return players.find(player => player.id === playerId) || null;
+  }, [players]);
   
   /**
    * Create a new player
@@ -141,7 +135,7 @@ export function usePlayers(): UsePlayersResult {
     
     const now = Date.now();
     
-    // Create new player for local storage
+    // Create new player
     const newPlayer: Player = {
       id: uuidv4(),
       teamId: currentTeam.id,
@@ -153,59 +147,33 @@ export function usePlayers(): UsePlayersResult {
     };
     
     try {
-      // First save to local storage
-      const localSuccess = storageService.player.savePlayer(newPlayer);
+      // Save to MongoDB via API
+      console.log('Creating player in MongoDB:', newPlayer);
       
-      if (!localSuccess) {
-        throw new Error('Failed to save player to local storage');
+      const response = await fetch('/api/teams/players', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newPlayer),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error creating player: ${response.status} ${response.statusText}`);
       }
       
-      // Try saving to API/MongoDB - create a compatible object for the API
-      try {
-        // Create an API-compatible player object
-        const apiPlayer = {
-          id: newPlayer.id,
-          teamId: newPlayer.teamId,
-          name: newPlayer.name, // Combined name for API
-          firstName: newPlayer.firstName,
-          lastName: newPlayer.lastName,
-          jerseyNumber: newPlayer.jerseyNumber,
-          primaryPositions: newPlayer.primaryPositions,
-          secondaryPositions: newPlayer.secondaryPositions,
-          notes: newPlayer.notes,
-          battingOrder: newPlayer.battingOrder,
-          active: newPlayer.active,
-          createdAt: newPlayer.createdAt,
-          updatedAt: newPlayer.updatedAt
-        };
-        
-        console.log('Sending player to API:', apiPlayer);
-        
-        const response = await fetch('/api/teams/players', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(apiPlayer),
-        });
-        
-        const data = await response.json();
-        
-        if (!data.success) {
-          console.error('API save failed but local save succeeded:', data.message);
-        } else {
-          console.log('Player saved to MongoDB successfully:', data.player);
-        }
-      } catch (apiError) {
-        // Log the error but don't fail the operation since local save succeeded
-        console.error('Failed to save player to API (will sync later):', apiError);
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to create player in database');
       }
+      
+      console.log('Player created in MongoDB successfully:', data.player);
       
       // Refresh the players list
       loadPlayers();
       
-      return newPlayer;
-      
+      return data.player || newPlayer;
     } catch (error) {
       console.error('Player creation error:', error);
       throw new Error('Failed to save player: ' + String(error));
@@ -223,12 +191,28 @@ export function usePlayers(): UsePlayersResult {
     };
     
     try {
-      // First save to local storage
-      const localSuccess = storageService.player.savePlayer(updatedPlayer);
+      // Save to MongoDB via API
+      console.log('Updating player in MongoDB:', updatedPlayer);
       
-      if (!localSuccess) {
-        throw new Error('Failed to save player to local storage');
+      const response = await fetch('/api/teams/players', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedPlayer),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error updating player: ${response.status} ${response.statusText}`);
       }
+      
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to update player in database');
+      }
+      
+      console.log('Player updated in MongoDB successfully:', data.player);
       
       // Update local state immediately
       setPlayers(prevPlayers => 
@@ -237,30 +221,7 @@ export function usePlayers(): UsePlayersResult {
         )
       );
       
-      // Try saving to API/MongoDB
-      try {
-        const response = await fetch('/api/teams/players', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(updatedPlayer),
-        });
-        
-        const data = await response.json();
-        
-        if (!data.success) {
-          console.error('API update failed but local update succeeded:', data.message);
-        } else {
-          console.log('Player updated in MongoDB successfully:', data.player);
-        }
-      } catch (apiError) {
-        // Log the error but don't fail the operation since local save succeeded
-        console.error('Failed to update player in API (will sync later):', apiError);
-      }
-      
       return true;
-      
     } catch (error) {
       console.error('Player update error:', error);
       return false;
@@ -276,36 +237,29 @@ export function usePlayers(): UsePlayersResult {
     }
     
     try {
-      // First delete from localStorage
-      const localSuccess = storageService.player.deletePlayer(playerId);
+      // Delete from MongoDB via API
+      console.log('Deleting player from MongoDB:', playerId);
       
-      if (!localSuccess) {
-        throw new Error('Failed to delete player from local storage');
+      const response = await fetch(`/api/teams/players?playerId=${playerId}&teamId=${currentTeam.id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error deleting player: ${response.status} ${response.statusText}`);
       }
+      
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to delete player from database');
+      }
+      
+      console.log('Player deleted from MongoDB successfully');
       
       // Update local state immediately
       setPlayers(prevPlayers => prevPlayers.filter(player => player.id !== playerId));
       
-      // Try deleting from API/MongoDB
-      try {
-        const response = await fetch(`/api/teams/players?playerId=${playerId}&teamId=${currentTeam.id}`, {
-          method: 'DELETE',
-        });
-        
-        const data = await response.json();
-        
-        if (!data.success) {
-          console.error('API delete failed but local delete succeeded:', data.message);
-        } else {
-          console.log('Player deleted from MongoDB successfully');
-        }
-      } catch (apiError) {
-        // Log the error but don't fail the operation since local delete succeeded
-        console.error('Failed to delete player from API (will sync later):', apiError);
-      }
-      
       return true;
-      
     } catch (error) {
       console.error('Player deletion error:', error);
       return false;
@@ -377,7 +331,7 @@ export function useSinglePlayer(playerId: string | null) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Load player data
+  // Load player data from MongoDB
   useEffect(() => {
     if (!playerId) {
       setPlayer(null);
@@ -385,22 +339,40 @@ export function useSinglePlayer(playerId: string | null) {
       return;
     }
     
-    setIsLoading(true);
-    try {
-      const playerData = storageService.player.getPlayer(playerId);
-      setPlayer(playerData);
-      setError(null);
-    } catch (err) {
-      setError('Failed to load player: ' + String(err));
-    } finally {
-      setIsLoading(false);
-    }
+    const fetchPlayer = async () => {
+      setIsLoading(true);
+      try {
+        // Fetch player from MongoDB via API
+        const response = await fetch(`/api/teams/players?playerId=${playerId}`);
+        
+        if (!response.ok) {
+          throw new Error(`Error fetching player: ${response.status} ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.success && data.player) {
+          setPlayer(data.player);
+          setError(null);
+        } else {
+          throw new Error(data.message || 'Failed to load player from database');
+        }
+      } catch (err) {
+        console.error('Failed to load player:', err);
+        setError('Failed to load player: ' + String(err));
+        setPlayer(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchPlayer();
   }, [playerId]);
   
   /**
    * Update the player
    */
-  const updatePlayer = useCallback((updatedPlayer: Player): boolean => {
+  const updatePlayer = useCallback(async (updatedPlayer: Player): Promise<boolean> => {
     if (!updatedPlayer) return false;
     
     // Update timestamp
@@ -409,26 +381,59 @@ export function useSinglePlayer(playerId: string | null) {
       updatedAt: Date.now()
     };
     
-    const success = storageService.player.savePlayer(playerWithTimestamp);
-    
-    if (success) {
+    try {
+      // Update in MongoDB via API
+      const response = await fetch('/api/teams/players', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(playerWithTimestamp),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error updating player: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to update player in database');
+      }
+      
+      console.log('Player updated in MongoDB successfully');
       setPlayer(playerWithTimestamp);
+      return true;
+    } catch (error) {
+      console.error('Player update error:', error);
+      return false;
     }
-    
-    return success;
   }, []);
   
   /**
-   * Refresh player data from storage
+   * Refresh player data from MongoDB
    */
-  const refreshPlayer = useCallback(() => {
+  const refreshPlayer = useCallback(async () => {
     if (!playerId) return;
     
     try {
-      const playerData = storageService.player.getPlayer(playerId);
-      setPlayer(playerData);
-      setError(null);
+      // Fetch from MongoDB via API
+      const response = await fetch(`/api/teams/players?playerId=${playerId}`);
+      
+      if (!response.ok) {
+        throw new Error(`Error fetching player: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.success && data.player) {
+        setPlayer(data.player);
+        setError(null);
+      } else {
+        throw new Error(data.message || 'Failed to refresh player from database');
+      }
     } catch (err) {
+      console.error('Failed to refresh player:', err);
       setError('Failed to refresh player: ' + String(err));
     }
   }, [playerId]);

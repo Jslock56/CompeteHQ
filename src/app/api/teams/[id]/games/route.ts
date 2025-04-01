@@ -26,7 +26,7 @@ export async function GET(
     }
 
     // Get current user from authentication
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const user = await getCurrentUser(request, cookieStore);
     
     if (!user && process.env.NODE_ENV === 'production') {
@@ -41,7 +41,8 @@ export async function GET(
     }
 
     // Get team ID from route params
-    const teamId = Array.isArray(params.id) ? params.id[0] : params.id;
+    const teamParams = await params;
+    const teamId = Array.isArray(teamParams.id) ? teamParams.id[0] : teamParams.id;
     
     // Verify user is a member of this team in production mode
     if (process.env.NODE_ENV === 'production' && user) {
@@ -153,7 +154,7 @@ export async function POST(
     }
 
     // Get current user from authentication
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const user = await getCurrentUser(request, cookieStore);
     
     if (!user && process.env.NODE_ENV === 'production') {
@@ -168,7 +169,8 @@ export async function POST(
     }
 
     // Get team ID from route params
-    const teamId = Array.isArray(params.id) ? params.id[0] : params.id;
+    const teamParams = await params;
+    const teamId = Array.isArray(teamParams.id) ? teamParams.id[0] : teamParams.id;
     
     // Verify user is a member of this team in production mode
     if (process.env.NODE_ENV === 'production' && user) {

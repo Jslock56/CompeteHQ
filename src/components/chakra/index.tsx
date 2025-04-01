@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+// Revert to original imports to fix build errors
 import {
   Button as ChakraButton,
   Input as ChakraInput,

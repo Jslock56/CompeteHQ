@@ -1,9 +1,13 @@
 /**
+ * ⚠️ DEPRECATED ⚠️
+ * 
  * Sync Service
  * 
- * Provides functionality to synchronize data between local storage and MongoDB.
- * This is crucial for the offline-first experience, allowing users to work
- * offline and later sync their changes when they go back online.
+ * This module is deprecated and should not be used for new development.
+ * CompeteHQ is now a cloud-based application with MongoDB as the primary storage mechanism.
+ * No local data synchronization is needed as all data is stored directly in the cloud.
+ * 
+ * Local storage capabilities will be added in a future version for specific offline functionality.
  */
 'use server'; // Mark this module as server-only
 

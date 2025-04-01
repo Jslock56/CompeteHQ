@@ -1,6 +1,13 @@
 /**
- * Custom React hook for interacting with localStorage
- * Provides type-safe access to localStorage with React state management
+ * ⚠️ DEPRECATED ⚠️
+ * 
+ * Custom React hook for interacting with localStorage.
+ * 
+ * This hook is deprecated and should not be used for new development.
+ * CompeteHQ is now a cloud-based application with MongoDB as the primary storage mechanism.
+ * Local storage capabilities will be added in a future version for specific offline functionality.
+ * 
+ * Use direct API calls to MongoDB services instead.
  */
 
 import { useState, useEffect, useCallback } from 'react';

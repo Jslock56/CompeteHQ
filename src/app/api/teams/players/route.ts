@@ -35,7 +35,7 @@ const connectDB = async () => {
 // Helper to get the current user from the token
 async function getCurrentUser(request: NextRequest) {
   // First try cookie-based auth
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   // Use await with cookies to fix the synchronous API usage error
   const authCookie = cookieStore.get('auth_token');
   const authToken = authCookie?.value;

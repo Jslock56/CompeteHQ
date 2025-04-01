@@ -3,26 +3,20 @@
 import React, { createContext, useContext, ReactNode } from 'react';
 import { useStorage } from '../hooks/use-storage';
 import { storageAdapter } from '../services/database/storage-adapter';
-import { syncService } from '../services/database/sync-service';
 
 /**
  * Storage context state interface
+ * Focused exclusively on MongoDB database connectivity
  */
 interface StorageContextState {
-  // Status indicators
-  isOnline: boolean;
-  isSyncing: boolean;
-  pendingChanges: number;
+  // Connection status indicators
+  isDatabaseConnected: boolean;
   
-  // Storage adapter instance
+  // Storage adapter instance for database operations
   storage: typeof storageAdapter;
   
   // Actions
-  syncChanges: () => Promise<boolean>;
-  goOnline: () => Promise<boolean>;
-  goOffline: () => void;
-  fullSync: () => Promise<boolean>;
-  downloadAllData: () => Promise<boolean>;
+  connectToDatabase: () => Promise<boolean>;
 }
 
 // Create the context with a default empty state
@@ -38,14 +32,17 @@ interface StorageProviderProps {
 /**
  * Provider component for storage
  * Wraps children with the StorageContext provider
+ * Only monitors and manages MongoDB connectivity
  */
 export function StorageProvider({ children }: StorageProviderProps) {
-  // Use the storage hook to manage storage
-  const storageHook = useStorage();
+  // Use the storage hook to manage database connectivity
+  const { isDatabaseConnected, connectToDatabase } = useStorage();
   
-  // Context value contains all values and methods from storage hook
+  // Context value contains connectivity status and methods
   const contextValue: StorageContextState = {
-    ...storageHook
+    isDatabaseConnected,
+    storage: storageAdapter,
+    connectToDatabase
   };
   
   return (

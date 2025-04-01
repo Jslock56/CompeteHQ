@@ -1,14 +1,15 @@
 /**
  * Custom hook for lineup management
  * Provides methods for creating, reading, updating lineups
+ * This module exclusively uses MongoDB for data storage via API calls
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { storageService } from '../services/storage/enhanced-storage';
 import { Lineup, LineupInning, Position, PositionAssignment } from '../types/lineup';
 import { Player } from '../types/player';
 import { createDefaultLineup, createFieldPositionLineup, getFairPlayIssues } from '../utils/lineup-utils';
+import { storageAdapter } from '../services/database/storage-adapter';
 
 // Props for useLineup hook
 interface UseLineupProps {
@@ -118,13 +119,7 @@ export const useLineup = ({
     // Try to use initial lineup if provided
     if (initialLineup) return initialLineup;
     
-    // Try to load from storage if for a game
-    if (gameId) {
-      const existingLineup = storageService.lineup.getLineupByGame(gameId);
-      if (existingLineup) return existingLineup;
-    }
-    
-    // Create new lineup 
+    // Create new lineup - we don't load from local storage
     if (gameId) {
       // Game lineup
       return createDefaultLineup(teamId, gameId, innings);
@@ -359,7 +354,9 @@ export const useLineup = ({
     };
     
     try {
-      // First try to save to API
+      let savedLineup: Lineup | null = null;
+      
+      // Save lineup to API
       try {
         console.log(`Attempting to save lineup to API with ID: ${lineupToSave.id}, name: ${lineupToSave.name}, teamId: ${lineupToSave.teamId}`);
         
@@ -396,12 +393,9 @@ export const useLineup = ({
           if (data.success && data.lineup) {
             console.log('Saved lineup to API successfully');
             
-            // Also save to local storage for offline access
-            storageService.lineup.saveLineup(data.lineup);
-            
             // Update local state
             setLineup(data.lineup);
-            return data.lineup;
+            savedLineup = data.lineup;
           } else {
             console.warn('API response was OK but data.success was false or data.lineup was missing', data);
           }
@@ -416,20 +410,27 @@ export const useLineup = ({
           }
         }
       } catch (apiError) {
-        console.error('Failed to save lineup to API, falling back to local storage:', apiError);
+        console.error('Failed to save lineup to API:', apiError);
+        return null;
       }
       
-      // Fall back to local storage if API fails
-      console.log('Saving lineup to local storage');
-      const success = storageService.lineup.saveLineup(lineupToSave);
-      
-      if (success) {
-        // Update local state
-        setLineup(lineupToSave);
-        return lineupToSave;
-      } else {
-        console.error('Failed to save lineup to local storage');
+      // If the lineup was saved and it's a game lineup, trigger position history update
+      // Note: We don't directly update position history from the client
+      // Position history is updated server-side when saving the lineup through the API
+      if (savedLineup && savedLineup.gameId) {
+        try {
+          // The API route that saved the lineup will handle position history updates
+          console.log('Position history will be updated server-side for game lineup');
+          
+          // We could also call a dedicated API endpoint to update position history if needed
+          // but this is typically handled by the server when saving the lineup
+        } catch (positionHistoryError) {
+          console.error('Error with position history:', positionHistoryError);
+          // Don't fail the overall save if position history has issues
+        }
       }
+      
+      return savedLineup;
     } catch (error) {
       console.error('Error saving lineup:', error);
     }
@@ -459,7 +460,7 @@ export const useFieldPositionLineups = (teamId: string) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Load lineups
+  // Load lineups from MongoDB via API
   const loadLineups = useCallback(async () => {
     if (!teamId) return;
     
@@ -478,12 +479,6 @@ export const useFieldPositionLineups = (teamId: string) => {
           if (data.success && Array.isArray(data.lineups)) {
             console.log(`Loaded ${data.lineups.length} non-game lineups from dedicated API endpoint`);
             setLineups(data.lineups);
-            
-            // Update local storage with the API data for offline access
-            data.lineups.forEach((lineup: Lineup) => {
-              storageService.lineup.saveLineup(lineup);
-            });
-            
             setIsLoading(false);
             return;
           } else {
@@ -513,12 +508,6 @@ export const useFieldPositionLineups = (teamId: string) => {
           if (data.success && Array.isArray(data.lineups)) {
             console.log(`Loaded ${data.lineups.length} lineups from legacy API endpoint`);
             setLineups(data.lineups);
-            
-            // Update local storage with the API data for offline access
-            data.lineups.forEach((lineup: Lineup) => {
-              storageService.lineup.saveLineup(lineup);
-            });
-            
             setIsLoading(false);
             return;
           } else {
@@ -528,13 +517,9 @@ export const useFieldPositionLineups = (teamId: string) => {
           console.warn(`Legacy API endpoint returned status ${response.status} when loading lineups`);
         }
       } catch (legacyApiError) {
-        console.error('Failed to load lineups from legacy API endpoint, falling back to local storage:', legacyApiError);
+        console.error('Failed to load lineups from legacy API endpoint:', legacyApiError);
+        setError('Failed to load lineups. Please check your network connection and try again.');
       }
-      
-      // Fall back to local storage if all API attempts fail
-      console.log('Loading lineups from local storage as last resort');
-      const teamLineups = storageService.lineup.getNonGameLineupsByTeam(teamId);
-      setLineups(teamLineups);
     } catch (err) {
       setError(`Failed to load lineups: ${String(err)}`);
       console.error(err);
@@ -543,7 +528,7 @@ export const useFieldPositionLineups = (teamId: string) => {
     }
   }, [teamId]);
   
-  // Set a lineup as the default
+  // Set a lineup as the default using MongoDB via API
   const setDefaultLineup = useCallback(async (lineupId: string): Promise<boolean> => {
     if (!teamId) return false;
     
@@ -562,9 +547,6 @@ export const useFieldPositionLineups = (teamId: string) => {
           
           if (data.success) {
             console.log('Set default lineup via dedicated non-game API successfully');
-            
-            // Also update local storage
-            await storageService.lineup.setDefaultTeamLineup(lineupId, teamId);
             
             // Update local state
             setLineups(currentLineups => 
@@ -604,9 +586,6 @@ export const useFieldPositionLineups = (teamId: string) => {
           if (data.success) {
             console.log('Set default lineup via legacy API successfully');
             
-            // Also update local storage
-            await storageService.lineup.setDefaultTeamLineup(lineupId, teamId);
-            
             // Update local state
             setLineups(currentLineups => 
               currentLineups.map(lineup => ({
@@ -621,34 +600,20 @@ export const useFieldPositionLineups = (teamId: string) => {
           console.warn(`Legacy API endpoint returned status ${response.status} when setting default lineup`);
         }
       } catch (legacyApiError) {
-        console.error('Failed to set default lineup via legacy API, falling back to local storage:', legacyApiError);
+        console.error('Failed to set default lineup via legacy API:', legacyApiError);
       }
       
-      // Fall back to local storage
-      console.log('Setting default lineup in local storage');
-      const success = await storageService.lineup.setDefaultTeamLineup(lineupId, teamId);
-      
-      if (success) {
-        // Update local state
-        setLineups(currentLineups => 
-          currentLineups.map(lineup => ({
-            ...lineup,
-            isDefault: lineup.id === lineupId
-          }))
-        );
-      }
-      
-      return success;
+      return false;
     } catch (err) {
       console.error(`Failed to set default lineup: ${String(err)}`);
       return false;
     }
   }, [teamId]);
   
-  // Delete a lineup
+  // Delete a lineup using MongoDB via API
   const deleteLineup = useCallback(async (lineupId: string): Promise<boolean> => {
     try {
-      // First try to delete via API
+      // Delete via API
       try {
         const response = await fetch(`/api/lineups?id=${lineupId}`, {
           method: 'DELETE'
@@ -660,9 +625,6 @@ export const useFieldPositionLineups = (teamId: string) => {
           if (data.success) {
             console.log('Deleted lineup via API successfully');
             
-            // Also delete from local storage
-            await storageService.lineup.deleteLineup(lineupId);
-            
             // Update local state
             setLineups(currentLineups => 
               currentLineups.filter(lineup => lineup.id !== lineupId)
@@ -672,23 +634,18 @@ export const useFieldPositionLineups = (teamId: string) => {
           }
         } else {
           console.warn(`API returned status ${response.status} when deleting lineup`);
+          try {
+            const errorData = await response.json();
+            console.warn('Error details:', errorData);
+          } catch (e) {
+            console.warn('Could not parse error response:', e);
+          }
         }
       } catch (apiError) {
-        console.error('Failed to delete lineup via API, falling back to local storage:', apiError);
+        console.error('Failed to delete lineup via API:', apiError);
       }
       
-      // Fall back to local storage
-      console.log('Deleting lineup from local storage');
-      const success = await storageService.lineup.deleteLineup(lineupId);
-      
-      if (success) {
-        // Update local state
-        setLineups(currentLineups => 
-          currentLineups.filter(lineup => lineup.id !== lineupId)
-        );
-      }
-      
-      return success;
+      return false;
     } catch (err) {
       console.error(`Failed to delete lineup: ${String(err)}`);
       return false;

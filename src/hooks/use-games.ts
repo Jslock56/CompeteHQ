@@ -1,11 +1,12 @@
 /**
  * Custom hook for game management
  * Provides methods for creating, reading, updating, and deleting games
+ * This module exclusively uses MongoDB for data storage via API calls
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { storageService } from '../services/storage/enhanced-storage';
+import { storageAdapter } from '../services/database/storage-adapter';
 import { Game } from '../types/game';
 import { useTeamContext } from '../contexts/team-context';
 
@@ -74,7 +75,7 @@ export function useGames(): UseGamesResult {
   const [error, setError] = useState<string | null>(null);
   
   /**
-   * Load all games for the current team
+   * Load all games for the current team from MongoDB via API
    */
   const loadGames = useCallback(async () => {
     if (!currentTeam) {
@@ -126,16 +127,12 @@ export function useGames(): UseGamesResult {
           }
         } else {
           console.warn(`API returned status ${response.status} when loading games for team ${currentTeam.id}`);
+          setError(`Failed to load games: Server returned ${response.status}`);
         }
       } catch (apiError) {
         console.error(`Failed to load games for team ${currentTeam.id} from API:`, apiError);
+        setError(`Failed to load games: ${apiError.message || 'Network error'}`);
       }
-      
-      // Fall back to local storage if API fails
-      console.log('Loading games from local storage');
-      const teamGames = storageService.game.getGamesByTeam(currentTeam.id);
-      setGames(teamGames);
-      setError(null);
     } catch (err) {
       setError('Failed to load games: ' + String(err));
     } finally {
@@ -144,49 +141,40 @@ export function useGames(): UseGamesResult {
   }, [currentTeam]);
   
   /**
-   * Get a single game by ID
+   * Get a single game by ID from MongoDB via API
    */
   const getGame = useCallback(async (gameId: string): Promise<Game | null> => {
     try {
-      // First try to load from API
-      try {
-        const response = await fetch(`/api/games/${gameId}`);
-        
-        if (response.ok) {
-          const data = await response.json();
-          
-          if (data.success && data.game) {
-            console.log(`Loaded game ${gameId} from API`, {
-              gameId: data.game.id,
-              innings: data.game.innings,
-              inningsType: typeof data.game.innings
-            });
-            
-            // Update local storage for offline access
-            storageService.game.saveGame(data.game);
-            
-            return data.game;
-          } else {
-            console.warn('API response was OK but data format was unexpected:', data);
-          }
-        } else {
-          console.warn(`API returned status ${response.status} when loading game ${gameId}`);
-        }
-      } catch (apiError) {
-        console.error(`Failed to load game ${gameId} from API, falling back to local storage:`, apiError);
-      }
+      const response = await fetch(`/api/games/${gameId}`);
       
-      // Fall back to local storage if API fails
-      console.log(`Loading game ${gameId} from local storage`);
-      return storageService.game.getGame(gameId);
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.success && data.game) {
+          console.log(`Loaded game ${gameId} from API`, {
+            gameId: data.game.id,
+            innings: data.game.innings,
+            inningsType: typeof data.game.innings
+          });
+          
+          return data.game;
+        } else {
+          console.warn('API response was OK but data format was unexpected:', data);
+        }
+      } else {
+        console.warn(`API returned status ${response.status} when loading game ${gameId}`);
+        throw new Error(`Failed to load game: Server returned ${response.status}`);
+      }
     } catch (error) {
       console.error(`Error fetching game ${gameId}:`, error);
-      return null;
+      throw error;
     }
+    
+    return null;
   }, []);
   
   /**
-   * Create a new game
+   * Create a new game in MongoDB via API
    */
   const createGame = useCallback(async (gameData: Omit<Game, 'id' | 'teamId' | 'createdAt' | 'updatedAt'>): Promise<Game> => {
     if (!currentTeam) {
@@ -220,33 +208,26 @@ export function useGames(): UseGamesResult {
         if (data.success && data.game) {
           console.log(`Successfully created game ${data.game.id} via API`);
           
-          // Also save to local storage for offline access
-          storageService.game.saveGame(data.game);
-          
           // Refresh the games list
           loadGames();
           
           return data.game;
         } else {
           console.warn('API response was OK but data format was unexpected:', data);
+          throw new Error('Failed to create game: Unexpected data format');
         }
       } else {
         console.warn(`API returned status ${response.status} when creating game`);
-        throw new Error(`Failed to create game: ${response.status}`);
+        throw new Error(`Failed to create game: Server returned ${response.status}`);
       }
     } catch (apiError) {
       console.error('Failed to create game via API:', apiError);
       throw apiError;
     }
-    
-    // Refresh the games list
-    loadGames();
-    
-    return newGame;
   }, [currentTeam, loadGames]);
   
   /**
-   * Update an existing game
+   * Update an existing game in MongoDB via API
    */
   const updateGame = useCallback(async (game: Game): Promise<boolean> => {
     // Update the timestamp
@@ -255,7 +236,6 @@ export function useGames(): UseGamesResult {
       updatedAt: Date.now()
     };
     
-    // First try to update via API
     try {
       const response = await fetch(`/api/games/${game.id}`, {
         method: 'PUT',
@@ -278,41 +258,25 @@ export function useGames(): UseGamesResult {
             )
           );
           
-          // Update local storage for offline access
-          storageService.game.saveGame(data.game);
-          
           return true;
         } else {
           console.warn('API response was OK but data format was unexpected:', data);
+          return false;
         }
       } else {
         console.warn(`API returned status ${response.status} when updating game ${game.id}`);
+        return false;
       }
     } catch (apiError) {
-      console.error(`Failed to update game ${game.id} via API, falling back to local storage:`, apiError);
+      console.error(`Failed to update game ${game.id} via API:`, apiError);
+      return false;
     }
-    
-    // Fall back to local storage if API fails
-    console.log(`Updating game ${game.id} in local storage`);
-    const success = storageService.game.saveGame(updatedGame);
-    
-    if (success) {
-      // Update local state
-      setGames(prevGames => 
-        prevGames.map(g => 
-          g.id === game.id ? updatedGame : g
-        )
-      );
-    }
-    
-    return success;
   }, []);
   
   /**
-   * Delete a game
+   * Delete a game from MongoDB via API
    */
   const deleteGame = useCallback(async (gameId: string): Promise<boolean> => {
-    // First try to delete via API
     try {
       const response = await fetch(`/api/games/${gameId}`, {
         method: 'DELETE',
@@ -327,30 +291,19 @@ export function useGames(): UseGamesResult {
           // Update local state
           setGames(prevGames => prevGames.filter(game => game.id !== gameId));
           
-          // Also delete from local storage
-          storageService.game.deleteGame(gameId);
-          
           return true;
         } else {
           console.warn('API response was OK but data format was unexpected:', data);
+          return false;
         }
       } else {
         console.warn(`API returned status ${response.status} when deleting game ${gameId}`);
+        return false;
       }
     } catch (apiError) {
-      console.error(`Failed to delete game ${gameId} via API, falling back to local storage:`, apiError);
+      console.error(`Failed to delete game ${gameId} via API:`, apiError);
+      return false;
     }
-    
-    // Fall back to local storage if API fails
-    console.log(`Deleting game ${gameId} from local storage`);
-    const success = storageService.game.deleteGame(gameId);
-    
-    if (success) {
-      // Update local state
-      setGames(prevGames => prevGames.filter(game => game.id !== gameId));
-    }
-    
-    return success;
   }, []);
   
   // Get upcoming and past games
@@ -389,7 +342,7 @@ export function useGames(): UseGamesResult {
 }
 
 /**
- * Hook for managing a single game
+ * Hook for managing a single game from MongoDB via API
  * @param gameId - ID of the game to manage
  */
 export function useSingleGame(gameId: string | null) {
@@ -397,7 +350,7 @@ export function useSingleGame(gameId: string | null) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Load game data
+  // Load game data from MongoDB via API
   useEffect(() => {
     if (!gameId) {
       setGame(null);
@@ -408,39 +361,25 @@ export function useSingleGame(gameId: string | null) {
     async function loadGame() {
       setIsLoading(true);
       try {
-        // First try API
-        try {
-          const response = await fetch(`/api/games/${gameId}`);
-          
-          if (response.ok) {
-            const data = await response.json();
-            
-            if (data.success && data.game) {
-              console.log(`Loaded game ${gameId} from API`);
-              setGame(data.game);
-              
-              // Update local storage for offline access
-              storageService.game.saveGame(data.game);
-              
-              setError(null);
-              setIsLoading(false);
-              return;
-            } else {
-              console.warn('API response was OK but data format was unexpected:', data);
-            }
-          } else {
-            console.warn(`API returned status ${response.status} when loading game ${gameId}`);
-          }
-        } catch (apiError) {
-          console.error(`Failed to load game ${gameId} from API, falling back to local storage:`, apiError);
-        }
+        const response = await fetch(`/api/games/${gameId}`);
         
-        // Fall back to local storage
-        console.log(`Loading game ${gameId} from local storage`);
-        const gameData = storageService.game.getGame(gameId);
-        setGame(gameData);
-        setError(null);
+        if (response.ok) {
+          const data = await response.json();
+          
+          if (data.success && data.game) {
+            console.log(`Loaded game ${gameId} from API`);
+            setGame(data.game);
+            setError(null);
+          } else {
+            console.warn('API response was OK but data format was unexpected:', data);
+            setError('Failed to load game: Unexpected data format');
+          }
+        } else {
+          console.warn(`API returned status ${response.status} when loading game ${gameId}`);
+          setError(`Failed to load game: Server returned ${response.status}`);
+        }
       } catch (err) {
+        console.error(`Failed to load game ${gameId} from API:`, err);
         setError('Failed to load game: ' + String(err));
       } finally {
         setIsLoading(false);
@@ -451,7 +390,7 @@ export function useSingleGame(gameId: string | null) {
   }, [gameId]);
   
   /**
-   * Update the game
+   * Update the game in MongoDB via API
    */
   const updateGame = useCallback(async (updatedGame: Game): Promise<boolean> => {
     if (!updatedGame) return false;
@@ -462,7 +401,6 @@ export function useSingleGame(gameId: string | null) {
       updatedAt: Date.now()
     };
     
-    // First try API
     try {
       const response = await fetch(`/api/games/${updatedGame.id}`, {
         method: 'PUT',
@@ -478,71 +416,47 @@ export function useSingleGame(gameId: string | null) {
         if (data.success && data.game) {
           console.log(`Successfully updated game ${updatedGame.id} via API`);
           setGame(data.game);
-          
-          // Update local storage for offline access
-          storageService.game.saveGame(data.game);
-          
           return true;
         } else {
           console.warn('API response was OK but data format was unexpected:', data);
+          return false;
         }
       } else {
         console.warn(`API returned status ${response.status} when updating game ${updatedGame.id}`);
+        return false;
       }
     } catch (apiError) {
-      console.error(`Failed to update game ${updatedGame.id} via API, falling back to local storage:`, apiError);
+      console.error(`Failed to update game ${updatedGame.id} via API:`, apiError);
+      return false;
     }
-    
-    // Fall back to local storage
-    console.log(`Updating game ${updatedGame.id} in local storage`);
-    const success = storageService.game.saveGame(gameWithTimestamp);
-    
-    if (success) {
-      setGame(gameWithTimestamp);
-    }
-    
-    return success;
   }, []);
   
   /**
-   * Refresh game data from storage
+   * Refresh game data from MongoDB via API
    */
   const refreshGame = useCallback(async () => {
     if (!gameId) return;
     
     try {
-      // First try API
-      try {
-        const response = await fetch(`/api/games/${gameId}`);
-        
-        if (response.ok) {
-          const data = await response.json();
-          
-          if (data.success && data.game) {
-            console.log(`Refreshed game ${gameId} from API`);
-            setGame(data.game);
-            
-            // Update local storage for offline access
-            storageService.game.saveGame(data.game);
-            
-            setError(null);
-            return;
-          } else {
-            console.warn('API response was OK but data format was unexpected:', data);
-          }
-        } else {
-          console.warn(`API returned status ${response.status} when refreshing game ${gameId}`);
-        }
-      } catch (apiError) {
-        console.error(`Failed to refresh game ${gameId} from API, falling back to local storage:`, apiError);
-      }
+      const response = await fetch(`/api/games/${gameId}`);
       
-      // Fall back to local storage
-      console.log(`Refreshing game ${gameId} from local storage`);
-      const gameData = storageService.game.getGame(gameId);
-      setGame(gameData);
-      setError(null);
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.success && data.game) {
+          console.log(`Refreshed game ${gameId} from API`);
+          setGame(data.game);
+          setError(null);
+        } else {
+          console.warn('API response was OK but data format was unexpected:', data);
+          setError('Failed to refresh game: Unexpected data format');
+        }
+      } else {
+        console.warn(`API returned status ${response.status} when refreshing game ${gameId}`);
+        setError(`Failed to refresh game: Server returned ${response.status}`);
+      }
     } catch (err) {
+      console.error(`Failed to refresh game ${gameId}:`, err);
       setError('Failed to refresh game: ' + String(err));
     }
   }, [gameId]);

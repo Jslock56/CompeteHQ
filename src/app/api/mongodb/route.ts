@@ -1,10 +1,9 @@
 /**
  * API routes for MongoDB operations
- * This isolates MongoDB operations to the server side
+ * This provides MongoDB connectivity status and operations
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { storageAdapter } from '../../../services/database/storage-adapter';
-import { syncService } from '../../../services/database/sync-service';
 import mongoDBService from '../../../services/database/mongodb';
 
 export async function GET(request: NextRequest) {
@@ -19,14 +18,10 @@ export async function GET(request: NextRequest) {
     
     // Handle various operations
     switch (operation) {
-      case 'isOnline':
-        return NextResponse.json({ online: await storageAdapter.isOnline() });
-        
-      case 'getPendingChangesCount':
-        return NextResponse.json({ count: syncService.getPendingChangesCount() });
-        
-      case 'getSyncState':
-        return NextResponse.json(syncService.getSyncState());
+      case 'isDatabaseConnected':
+        // Check if MongoDB is connected
+        const isConnected = await storageAdapter.isDatabaseConnected();
+        return NextResponse.json({ connected: isConnected });
         
       case 'testConnection':
         // Test direct MongoDB connection
@@ -34,17 +29,16 @@ export async function GET(request: NextRequest) {
         const startTime = Date.now();
         await mongoDBService.connect();
         const connectionTime = Date.now() - startTime;
-        const isConnected = mongoDBService.isConnectedToDatabase();
+        const isDbConnected = mongoDBService.isConnectedToDatabase();
         const error = mongoDBService.getConnectionError();
         
         return NextResponse.json({ 
-          online: isConnected, 
+          connected: isDbConnected, 
           connectionTime,
-          error: error?.message,
-          mongodb: true
+          error: error?.message
         });
         
-      case 'debugGetNonGameLineups':
+      case 'getTeamLineups':
         // Get non-game lineups for a team
         const teamId = searchParams.get('teamId');
         if (!teamId) {
@@ -75,7 +69,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { operation, data } = body;
+    const { operation } = body;
     
     if (!operation) {
       return NextResponse.json({ error: 'Operation parameter is required' }, { status: 400 });
@@ -83,21 +77,10 @@ export async function POST(request: NextRequest) {
     
     // Handle various operations
     switch (operation) {
-      case 'goOnline':
-        return NextResponse.json({ success: await storageAdapter.goOnline() });
-        
-      case 'goOffline':
-        storageAdapter.goOffline();
-        return NextResponse.json({ success: true });
-        
-      case 'syncChanges':
-        return NextResponse.json({ success: await syncService.syncPendingChanges() });
-        
-      case 'fullSync':
-        return NextResponse.json({ success: await syncService.fullSync() });
-        
-      case 'downloadAllData':
-        return NextResponse.json({ success: await syncService.downloadAllData() });
+      case 'connectToDatabase':
+        // Attempt to connect to the database
+        const connected = await storageAdapter.connectToDatabase();
+        return NextResponse.json({ success: connected });
         
       default:
         return NextResponse.json({ error: `Unknown operation: ${operation}` }, { status: 400 });

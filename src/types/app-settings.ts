@@ -1,3 +1,9 @@
+/**
+ * Application Settings Interface
+ * 
+ * These settings are stored in MongoDB for each user
+ * and determine the application behavior and preferences.
+ */
 export interface AppSettings {
     /**
      * The currently selected team ID
@@ -10,14 +16,18 @@ export interface AppSettings {
     theme: 'light' | 'dark' | 'system';
     
     /**
-     * Whether to prefer offline mode
-     * NOTE: This must be set to false to ensure MongoDB integration
-     */
-    preferOffline: boolean;
-    
-    /**
      * Default number of innings for new games
      * Range: 1-9
      */
     defaultInnings: number;
+    
+    /**
+     * Whether to enable email notifications
+     */
+    emailNotifications: boolean;
+    
+    /**
+     * Last updated timestamp
+     */
+    updatedAt?: number;
   }

@@ -1,7 +1,9 @@
 import { Position } from './player';
+import { PositionType } from '../utils/position-utils';
 
 /**
  * Represents a player's position history across multiple games
+ * LEGACY: Kept for backward compatibility during transition
  */
 export interface PositionHistory {
   id: string;
@@ -13,6 +15,7 @@ export interface PositionHistory {
 
 /**
  * Represents a player's positions for a specific game
+ * LEGACY: Kept for backward compatibility during transition
  */
 export interface GamePositions {
   gameId: string;
@@ -94,7 +97,46 @@ export interface PositionDistribution {
 }
 
 /**
- * Interface for detailed position metrics across time periods
+ * Interface for pre-computed metrics at a specific time scale
+ * Used in the reference-based position history system
+ */
+export interface TimeframePositionMetrics {
+  // Position counts and percentages
+  positionCounts: Record<Position, number>;
+  positionPercentages: Record<Position, number>;
+  
+  // Position type counts and percentages
+  positionTypeCounts: Record<PositionType, number>;
+  positionTypePercentages: Record<PositionType, number>;
+  
+  // Fair play metrics
+  benchPercentage: number;
+  varietyScore: number;
+  consecutiveBench: number;
+  benchStreak: {
+    current: number;
+    max: number;
+  };
+  
+  // Position needs
+  needsInfield: boolean;
+  needsOutfield: boolean;
+  
+  // Total stats
+  totalInnings: number;
+  gamesPlayed: number;
+  
+  // Additional metrics for fair play calculations
+  playingTimePercentage: number;
+  samePositionStreak?: {
+    position: Position | null;
+    count: number;
+  };
+}
+
+/**
+ * Legacy/full PositionMetrics interface
+ * LEGACY: Kept for backward compatibility during transition
  */
 export interface PositionMetrics {
   playerId: string;
@@ -115,6 +157,31 @@ export interface PositionMetrics {
   samePositionStreakMax: number; // Max innings at same position
   playingTimePercentage: number; // % of total innings played
   varietyScore: number; // 0-100 score for position variety
+}
+
+/**
+ * NEW Reference-based player position history
+ * Stores game references and pre-computed metrics at different time scales
+ */
+export interface PlayerPositionHistory {
+  id: string;
+  playerId: string;
+  teamId: string;
+  season: string;
+  
+  // Only store references to games, not position data itself
+  gamesPlayed: string[]; // Array of gameIds
+  
+  // Pre-computed metrics that get updated after each game
+  metrics: {
+    season: TimeframePositionMetrics;
+    last5Games: TimeframePositionMetrics; 
+    last3Games: TimeframePositionMetrics;
+    lastGame: TimeframePositionMetrics;
+  };
+  
+  // Last updated timestamp
+  updatedAt: number;
 }
 
 /**

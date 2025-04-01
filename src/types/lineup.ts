@@ -2,24 +2,16 @@
  * Types for lineup management
  */
 
-/**
- * Available baseball positions
- */
-export type Position = 'P' | 'C' | '1B' | '2B' | '3B' | 'SS' | 'LF' | 'CF' | 'RF' | 'DH' | 'BN';
+import { Position } from './shared-types';
 
 /**
- * Lineup data structure
+ * Base lineup properties shared by all lineup types
  */
-export interface Lineup {
+export interface BaseLineup {
   /**
    * Unique identifier
    */
   id: string;
-  
-  /**
-   * Associated game ID (optional for non-game lineups)
-   */
-  gameId?: string;
   
   /**
    * Team ID
@@ -27,24 +19,14 @@ export interface Lineup {
   teamId: string;
   
   /**
-   * Lineup name (for non-game lineups)
+   * Lineup name
    */
   name?: string;
   
   /**
-   * Lineup type (for non-game lineups)
+   * Lineup type
    */
   type?: 'standard' | 'competitive' | 'developmental';
-  
-  /**
-   * Whether this is the default lineup for the team
-   */
-  isDefault?: boolean;
-  
-  /**
-   * Inning-by-inning lineup data
-   */
-  innings: LineupInning[];
   
   /**
    * Lineup status
@@ -61,6 +43,60 @@ export interface Lineup {
    */
   updatedAt: number;
 }
+
+/**
+ * Template lineup (single-inning, reusable)
+ */
+export interface TemplateLineup extends BaseLineup {
+  /**
+   * Whether this is the default template lineup for the team
+   */
+  isDefault?: boolean;
+  
+  /**
+   * Position assignments (single inning representation)
+   */
+  positions: PositionAssignment[];
+}
+
+/**
+ * Game-specific lineup (multi-inning)
+ */
+export interface GameLineup extends BaseLineup {
+  /**
+   * Associated game ID
+   */
+  gameId: string;
+  
+  /**
+   * Inning-by-inning lineup data
+   */
+  innings: LineupInning[];
+  
+  /**
+   * Storage collection type for database organization
+   */
+  collectionType?: 'gameLineups';
+}
+
+/**
+ * Union type for backward compatibility
+ */
+export type Lineup = TemplateLineup | GameLineup;
+
+/**
+ * Type guard to check if a lineup is a game lineup
+ */
+export const isGameLineup = (lineup: Lineup): lineup is GameLineup => {
+  return 'gameId' in lineup && 'innings' in lineup;
+};
+
+/**
+ * Type guard to check if a lineup is a template lineup
+ */
+export const isTemplateLineup = (lineup: Lineup): lineup is TemplateLineup => {
+  return !('gameId' in lineup) && 'positions' in lineup;
+};
 
 /**
  * Lineup data for a single inning

@@ -28,11 +28,12 @@ export async function GET(
     }
 
     // Get the team ID from route params
-    const teamId = Array.isArray(params.id) ? params.id[0] : params.id;
+    const teamParams = await params;
+    const teamId = Array.isArray(teamParams.id) ? teamParams.id[0] : teamParams.id;
     console.log(`Getting lineups for team: ${teamId}`);
 
     // Get user - In development mode, this will return a mock user
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const user = await getCurrentUser(request, cookieStore);
 
     if (!user && process.env.NODE_ENV === 'production') {
@@ -127,11 +128,12 @@ export async function POST(
     }
 
     // Get the team ID from route params
-    const teamId = Array.isArray(params.id) ? params.id[0] : params.id;
+    const teamParams = await params;
+    const teamId = Array.isArray(teamParams.id) ? teamParams.id[0] : teamParams.id;
     console.log(`Creating lineup for team: ${teamId}`);
 
     // Get user - In development mode, this will return a mock user
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const user = await getCurrentUser(request, cookieStore);
 
     if (!user && process.env.NODE_ENV === 'production') {
@@ -258,11 +260,12 @@ export async function PUT(
     }
 
     // Get the team ID from route params
-    const teamId = Array.isArray(params.id) ? params.id[0] : params.id;
+    const teamParams = await params;
+    const teamId = Array.isArray(teamParams.id) ? teamParams.id[0] : teamParams.id;
     console.log(`Updating lineup for team: ${teamId}`);
 
     // Get user - In development mode, this will return a mock user
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const user = await getCurrentUser(request, cookieStore);
 
     if (!user && process.env.NODE_ENV === 'production') {

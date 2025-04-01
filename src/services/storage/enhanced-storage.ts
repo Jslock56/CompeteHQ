@@ -1,7 +1,12 @@
 /**
- * Enhanced storage service with type-specific methods for each entity
- * This builds on top of the base local-storage service to provide more
- * targeted methods for working with specific entity types.
+ * ⚠️ DEPRECATED ⚠️
+ * 
+ * Enhanced storage service with type-specific methods for each entity.
+ * This module is deprecated and should not be used for new development.
+ * CompeteHQ is now a cloud-based application with MongoDB as the primary storage mechanism.
+ * Local storage capabilities will be added in a future version for specific offline functionality.
+ * 
+ * Use the MongoDB services directly or through the storage adapter instead.
  */
 
 import { localStorageService, STORAGE_KEYS } from './local-storage';
