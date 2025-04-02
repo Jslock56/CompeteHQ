@@ -3,6 +3,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { User } from '../../../../models/user';
+import { TeamMembership } from '../../../../models/team-membership';
 import { authService } from '../../../../services/auth/auth-service';
 import { cookies } from 'next/headers';
 
@@ -11,10 +12,17 @@ import { connectMongoDB } from '../../../../services/database/mongodb';
 
 export async function POST(request: NextRequest) {
   try {
-    // Ensure MongoDB is connected
-    await connectMongoDB();
+    // Ensure MongoDB is connected first
+    const connected = await connectMongoDB();
+    if (!connected) {
+      console.error('Set active team API: Failed to connect to MongoDB');
+      return NextResponse.json({
+        success: false,
+        message: 'Database connection failed'
+      }, { status: 500 });
+    }
     
-    // Get the request body first to avoid consuming it
+    // Get the request body to extract teamId
     const body = await request.json();
     const { teamId } = body;
     
@@ -27,51 +35,50 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
     
-    // Get auth token from cookies
+    // Get current user using our enhanced getCurrentUser function
     const cookieStore = cookies();
-    const authCookie = cookieStore.get('auth_token');
-    const authToken = authCookie?.value;
+    const currentUser = await import('../../../../services/auth/api-auth')
+      .then(module => module.getCurrentUser(request, cookieStore));
     
-    console.log('Auth token from cookie:', authToken ? 'Present' : 'Not found');
-    
-    if (!authToken) {
+    if (!currentUser) {
+      console.error('Set active team API: No user found from auth token');
       return NextResponse.json({
         success: false,
         message: 'Not authenticated'
       }, { status: 401 });
     }
     
-    // Verify token
-    const tokenVerification = await authService.verifyToken(authToken);
+    console.log(`Set active team API: Found user ${currentUser.email}`);
     
-    if (!tokenVerification.valid || !tokenVerification.userId) {
-      return NextResponse.json({
-        success: false,
-        message: 'Invalid or expired token'
-      }, { status: 401 });
-    }
+    // User is authenticated and properly loaded, proceed with operation
     
-    // Get user
-    const user = await User.findById(tokenVerification.userId);
+    // We already have the current user loaded, no need to fetch it again
+    const user = currentUser;
     
-    if (!user) {
-      console.error('User not found with ID:', tokenVerification.userId);
-      return NextResponse.json({
-        success: false,
-        message: 'User not found'
-      }, { status: 404 });
-    }
-    
-    console.log('User found:', user.email);
     console.log('User teams:', user.teams);
     console.log('Team ID to set as active:', teamId);
     
-    // Force-add the team to the user's teams if it's not already there
-    // Note: This is a temporary fix for development - in production you would want
-    // proper team membership validation
+    // First verify user is a member of this team
     if (!user.teams.includes(teamId)) {
-      console.log('Adding teamId to user.teams');
-      user.teams.push(teamId);
+      // Check the team memberships to ensure the relationship is valid
+      const membership = await TeamMembership.findOne({ 
+        userId: user._id, 
+        teamId,
+        status: 'active'
+      });
+      
+      if (membership) {
+        // Membership exists in the team-membership collection but not in user's teams
+        // This is a data inconsistency, fix it by adding the team to the user's teams
+        console.log('Fixing data inconsistency: Adding team to user.teams');
+        user.teams.push(teamId);
+      } else {
+        // User doesn't have any relationship with this team
+        return NextResponse.json({
+          success: false,
+          message: 'You are not a member of this team'
+        }, { status: 403 });
+      }
     }
     
     // Update active team

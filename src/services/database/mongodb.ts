@@ -28,16 +28,18 @@ let isConnected = false;
 
 /**
  * Create a singleton Mongoose connection to be shared across all API routes
+ * @returns Promise<boolean> true if connected successfully, false otherwise
  */
-export async function connectMongoDB() {
+export async function connectMongoDB(): Promise<boolean> {
   if (isConnected) {
     console.log('=> Using existing MongoDB connection');
-    return;
+    return true;
   }
 
   try {
     if (!MONGODB_URI) {
-      throw new Error('MONGODB_URI is not defined in environment variables');
+      console.error('MONGODB_URI is not defined in environment variables');
+      return false;
     }
 
     console.log('=> Connecting to MongoDB...');
@@ -54,9 +56,10 @@ export async function connectMongoDB() {
     
     isConnected = true;
     console.log('=> MongoDB connected successfully');
+    return true;
   } catch (error) {
     console.error('MongoDB connection error:', error);
-    throw new Error('Failed to connect to MongoDB');
+    return false;
   }
 }
 
@@ -123,26 +126,58 @@ class MongoDBService {
    * Should be called during app startup
    */
   async connect(): Promise<boolean> {
-    if (this.isConnected) {
-      console.log('Already connected to MongoDB, reusing connection');
+    // If already successfully connected with all collections initialized, reuse the connection
+    if (this.isConnected && this.db && this.client && 
+        this.usersCollection && this.teamsCollection && 
+        this.playersCollection && this.gamesCollection) {
+      console.log('Already connected to MongoDB with all collections initialized, reusing connection');
       return true;
     }
+    
+    // If another connection is in progress, wait for it with a timeout
     if (this.isConnecting) {
-      console.log('MongoDB connection attempt already in progress');
-      return false;
+      console.log('MongoDB connection attempt already in progress, waiting...');
+      
+      // Set a timeout to prevent indefinite waiting
+      const connectionTimeout = setTimeout(() => {
+        console.warn('Connection attempt timeout - resetting connection lock');
+        this.isConnecting = false;
+      }, 10000); // 10 second timeout
+      
+      let attempts = 0;
+      const maxAttempts = 100; // 10 seconds max wait
+      
+      // Wait for the existing connection to complete
+      while (this.isConnecting && attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+      }
+      
+      clearTimeout(connectionTimeout);
+      
+      // Check if we're now connected and collections are initialized
+      if (this.isConnected && this.db && this.client && this.usersCollection && this.teamsCollection) {
+        console.log('MongoDB successfully connected while waiting');
+        return true;
+      }
+      
+      // If we timed out or the other connection attempt failed, we'll try again
+      console.log('Previous connection attempt finished or timed out, starting new attempt');
     }
     
+    // Mark that we're attempting to connect
+    this.isConnecting = true;
+    this.connectionError = null;
+    
     try {
-      this.isConnecting = true;
-      this.connectionError = null;
-
       // Check if MongoDB URI is provided
       if (!MONGODB_URI) {
-        console.warn('MongoDB URI is not defined in environment variables');
+        console.error('MongoDB URI is not defined in environment variables');
+        this.connectionError = new Error('MONGODB_URI is not defined');
         if (process.env.NODE_ENV === 'production') {
-          throw new Error('MongoDB URI is required in production environment');
+          throw this.connectionError;
         }
-        console.log('Running in development mode without MongoDB - using local storage only');
+        console.warn('No MongoDB URI available - database features will not work');
         return false;
       }
 
@@ -167,20 +202,28 @@ class MongoDBService {
       // Get database
       this.db = this.client.db(DB_NAME);
       
-      // Initialize collections
+      console.log('Initializing all MongoDB collections...');
+      
+      // Initialize collections - ensure ALL collections are initialized
       this.teamsCollection = this.db.collection<Team>(COLLECTIONS.TEAMS);
       this.playersCollection = this.db.collection<Player>(COLLECTIONS.PLAYERS);
       this.gamesCollection = this.db.collection<Game>(COLLECTIONS.GAMES);
       this.lineupsCollection = this.db.collection<Lineup>(COLLECTIONS.LINEUPS);
+      this.gameLineupsCollection = this.db.collection<Lineup>(COLLECTIONS.GAME_LINEUPS);
       this.practicesCollection = this.db.collection<Practice>(COLLECTIONS.PRACTICES);
       this.positionHistoriesCollection = this.db.collection<PositionHistory>(COLLECTIONS.POSITION_HISTORIES);
       this.usersCollection = this.db.collection(COLLECTIONS.USERS);
+      
+      // Verify collections are initialized
+      if (!this.usersCollection || !this.teamsCollection) {
+        throw new Error('Failed to initialize critical MongoDB collections');
+      }
 
       // Create indexes
       await this.createIndexes();
 
       this.isConnected = true;
-      console.log('Connected to MongoDB successfully');
+      console.log('Connected to MongoDB successfully with all collections initialized');
       return true;
     } catch (error) {
       this.connectionError = error as Error;
@@ -942,20 +985,106 @@ class MongoDBService {
   }
   
   /**
-   * Get a user by auth token
+   * Get a user by auth token - using JWT verification instead of DB token lookup
    */
   async getUserByAuthToken(authToken: string): Promise<any | null> {
-    if (!this.usersCollection) throw new Error('Users collection is not initialized');
-    
     try {
-      return this.usersCollection.findOne({ 
-        'auth.tokens.token': authToken,
-        'auth.tokens.expires': { $gt: Date.now() }
-      });
+      console.log('MongoDB: Getting user by auth token using JWT verification');
+      
+      // Directly import auth service to avoid circular dependencies
+      const { verify } = await import('jsonwebtoken');
+      const JWT_SECRET = process.env.JWT_SECRET;
+      
+      if (!JWT_SECRET) {
+        console.error('JWT_SECRET is not defined in environment variables');
+        return null;
+      }
+      
+      // First verify the token cryptographically - this is the secure way
+      let decoded;
+      try {
+        decoded = verify(authToken, JWT_SECRET) as { userId: string; email: string };
+        console.log('MongoDB: JWT token verified successfully, userId:', decoded.userId);
+      } catch (verifyError) {
+        console.error('MongoDB: JWT token verification failed:', verifyError);
+        return null;
+      }
+      
+      if (!decoded || !decoded.userId) {
+        console.error('MongoDB: JWT token invalid or missing userId');
+        return null;
+      }
+      
+      // Ensure connection and initialize collections
+      await this.ensureConnection();
+      
+      if (!this.usersCollection) {
+        console.error('MongoDB: Users collection not initialized after connection');
+        return null;
+      }
+      
+      // Get user by ID from the decoded token
+      console.log(`MongoDB: Looking up user by ID: ${decoded.userId}`);
+      
+      // First, try to find the user directly through the Mongoose model
+      // This handles ObjectId conversion automatically
+      try {
+        const { User } = await import('../../models/user');
+        console.log(`MongoDB: Looking up user through Mongoose model with ID: ${decoded.userId}`);
+        
+        const mongooseUser = await User.findById(decoded.userId);
+        if (mongooseUser) {
+          console.log(`MongoDB: Found user through Mongoose: ${mongooseUser.email}`);
+          return mongooseUser;
+        }
+      } catch (mongooseError) {
+        console.error('MongoDB: Error finding user through Mongoose:', mongooseError);
+      }
+      
+      // Fall back to direct collection access with multiple ID formats
+      let user = await this.usersCollection.findOne({ _id: decoded.userId });
+      
+      // If not found by _id directly, try with ObjectId string
+      if (!user) {
+        console.log(`MongoDB: No user found with exact ID match, trying string ID`);
+        user = await this.usersCollection.findOne({ _id: { $in: [decoded.userId, String(decoded.userId)] } });
+      }
+      
+      // Try again with different field
+      if (!user) {
+        console.log(`MongoDB: Trying with 'id' field instead of '_id'`);
+        user = await this.usersCollection.findOne({ id: decoded.userId });
+      }
+      
+      // If still not found, try by email if available
+      if (!user && decoded.email) {
+        console.log(`MongoDB: No user found with ID, trying by email: ${decoded.email}`);
+        user = await this.usersCollection.findOne({ email: decoded.email });
+      }
+      
+      if (!user) {
+        console.log(`MongoDB: No user found with ID or email: ${decoded.userId}, ${decoded.email || 'no email'}`);
+      } else {
+        console.log(`MongoDB: Found user: ${user.email}, ID: ${user._id}`);
+      }
+      
+      return user;
     } catch (error) {
-      console.error('Failed to get user by auth token:', error);
+      console.error('MongoDB: Failed to get user by auth token:', error);
       return null;
     }
+  }
+  
+  /**
+   * Ensure MongoDB is connected and collections are initialized
+   * @returns true if connected, false otherwise
+   */
+  private async ensureConnection(): Promise<boolean> {
+    if (this.isConnected && this.db && this.usersCollection) {
+      return true;
+    }
+    
+    return await this.connect();
   }
 
   /**
